@@ -1,8 +1,9 @@
-Description
-==========
-`MemoryAnalyzer` runs to special PIN-tool to test application. After test `MemoryAnalyzer` analyzes results and shows them in convenient form.
+# Description
+`MemoryAnalyzer` runs to [special PIN-tool](https://github.com/dimagerasimov/MemoryTrace) to test application. After test `MemoryAnalyzer` analyzes results and shows them in convenient form.
 
-Requirements
-==========
+# Requirements
 * Installing Intel-PIN ([download here](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads)).
 * JFreeChart - a free JAVA chart library ([download here](http://www.jfree.org/jfreechart/download.html)).
+
+# Repository
+In folder "netbeansproject" contains source code of `MemoryAnalyzer`.
