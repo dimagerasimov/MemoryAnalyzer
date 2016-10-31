@@ -1,5 +1,5 @@
 # Description
-`MemoryAnalyzer` runs to [special PIN-tool](https://github.com/dimagerasimov/MemoryTrace) to test application. After test `MemoryAnalyzer` analyzes results and shows them in convenient form.
+`MemoryAnalyzer` runs to special PIN-tool [MemoryTrace](https://github.com/dimagerasimov/MemoryTrace) to test application. After test `MemoryAnalyzer` analyzes results and shows them in convenient form.
 
 # Requirements
 * Installing Intel-PIN ([download here](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads)).
