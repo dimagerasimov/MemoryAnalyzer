@@ -33,7 +33,7 @@ public class BinReader {
     private static void SkipSection(DataInputStream dis) throws IOException
     {
         Long rlong;
-        if(dis.available() >= (Long.SIZE / Byte.SIZE))
+        if(dis.available() >= BinTypes.SIZE_OF_SIZE_T)
         {
             rlong = dis.readLong();
             if(dis.available() >= rlong)
@@ -43,16 +43,16 @@ public class BinReader {
     private static long GetMFreeAddress(BinfElement element)
     {
         int offset = 0;
-        byte[] bin_to_long = new byte[Long.BYTES / Byte.BYTES];
+        byte[] bin_to_long = new byte[BinTypes.SIZE_OF_PTR];
         switch(element.code_function) {
             case BinTypes.FCODE_MALLOC:
                 //arg0
-                for(int i = 0; i < Long.BYTES / Byte.BYTES; i++)
+                for(int i = 0; i < BinTypes.SIZE_OF_PTR; i++)
                     { bin_to_long[i] = element.data[i + offset]; }
                 break;
             case BinTypes.FCODE_FREE:
                 //arg0
-                for(int i = 0; i < Long.BYTES / Byte.BYTES; i++)
+                for(int i = 0; i < BinTypes.SIZE_OF_PTR; i++)
                     { bin_to_long[i] = element.data[i + offset]; }
                 break;
             default:
@@ -63,21 +63,21 @@ public class BinReader {
     private static double GetMFreeSizeMB(BinfElement element)
     {
         int offset = 0;
-        byte[] bin_to_long = new byte[Long.BYTES / Byte.BYTES];
+        byte[] bin_to_long = new byte[BinTypes.SIZE_OF_SIZE_T];
         switch(element.code_function) {
             case BinTypes.FCODE_MALLOC:
                 //arg1
                 switch(element.types[0]){
                     case BinTypes.TCODE_PTR:
-                        offset += Long.BYTES / Byte.BYTES;
+                        offset += BinTypes.SIZE_OF_PTR;
                         break;
                     case BinTypes.TCODE_SIZE_T:
-                        offset += Long.BYTES / Byte.BYTES;
+                        offset += BinTypes.SIZE_OF_SIZE_T;
                         break;
                     default:
                         return -1;
                 }
-                for(int i = 0; i < Long.BYTES / Byte.BYTES; i++)
+                for(int i = 0; i < BinTypes.SIZE_OF_SIZE_T; i++)
                     { bin_to_long[i] = element.data[i + offset]; }
                 break;
             default:
@@ -90,17 +90,17 @@ public class BinReader {
     {
         BinfElement element = new BinfElement();
         //READ FUNCTION CODE
-        if(dis.available() < (Byte.SIZE / Byte.SIZE))
+        if(dis.available() < BinTypes.SIZE_OF_BYTE)
             { return null; }
         else
             { element.code_function = dis.readByte(); }
         //READ COUNT
-        if(dis.available() < (Byte.SIZE / Byte.SIZE))
+        if(dis.available() < BinTypes.SIZE_OF_BYTE)
             { return null; }
         else
             { element.count = dis.readByte(); }
         //READ TYPES
-        if(dis.available() < element.count * (Byte.SIZE / Byte.SIZE))
+        if(dis.available() < element.count * BinTypes.SIZE_OF_BYTE)
             { return null; }
         else
         {
@@ -108,7 +108,7 @@ public class BinReader {
             dis.read(element.types, 0, element.count);
         }
         //READ SIZE OF DATA
-        if(dis.available() < (Byte.SIZE / Byte.SIZE))
+        if(dis.available() < BinTypes.SIZE_OF_BYTE)
             { return null; }
         else
             { element.size_of_data = dis.readByte(); }
@@ -155,7 +155,7 @@ public class BinReader {
         long rlong;
         boolean isMFree = false;
         DataInputStream dis = new DataInputStream(new FileInputStream(pathBinFile));
-        while(dis.available() > (Byte.SIZE / Byte.SIZE))
+        while(dis.available() > BinTypes.SIZE_OF_BYTE)
         {
             rbyte = dis.readByte();
             if(rbyte == BinTypes.MFREE_SECTION)
@@ -165,7 +165,7 @@ public class BinReader {
         }
         if(!isMFree)
             { return null; }
-        if(dis.available() >= (Long.SIZE / Byte.SIZE))
+        if(dis.available() >= BinTypes.SIZE_OF_SIZE_T)
         {
             rlong = dis.readLong();
             if(reverse)

@@ -12,11 +12,16 @@ package memoryanalyzer;
 public class BinTypes {
     //SECTIONS
     public static final byte MFREE_SECTION = 0x01;
+
+    //SIZE OF DIFFRENT TYPES
+    public static final int SIZE_OF_BYTE = Byte.BYTES;
+    public static final int SIZE_OF_PTR = Long.BYTES;
+    public static final int SIZE_OF_SIZE_T = Long.BYTES;
     
     //FUNCTION CODES
     public static final byte TCODE_PTR = 0;
     public static final byte TCODE_SIZE_T = 1;
-    
+
     ///FOR MALLOC FREE SECTION
     public static final byte FCODE_MALLOC = 0;
     public static final byte FCODE_FREE = 1;
