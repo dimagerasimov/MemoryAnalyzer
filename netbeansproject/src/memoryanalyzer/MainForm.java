@@ -23,7 +23,7 @@ public class MainForm extends javax.swing.JFrame {
     public MainForm() {
         initComponents();
         initPinToolChooser();
-        this.setCenterPosition();
+        setCenterPosition();
     }
 
     /**
@@ -105,30 +105,19 @@ public class MainForm extends javax.swing.JFrame {
     
     public void SysIsNotSupported()
     {
-        new MsgBox(this, "Error!", "Your OS is not supported!").setVisible(true);
-        this.setVisible(false);
-        this.dispose();
+        new MsgBox(this, "Error!", "Your OS is not supported!",
+            MsgBox.ACTION_CLOSE).setVisible(true);
     }
     
     private void initPinToolChooser()
     {
-        FileNameExtensionFilter filterNameExtension = null;
-        String myOS = System.getProperty("os.name");
-        if(myOS == null)
-            { SysIsNotSupported(); }
-        else {
-            switch (myOS) {
-            case "Linux":
-                filterNameExtension = new FileNameExtensionFilter("PIN-tool (.so)", "so");
-                break;
-            case "Windows":
-                filterNameExtension = new FileNameExtensionFilter("PIN-tool (.dll)", "dll");
-                break;
-            default:
-                SysIsNotSupported();
-                return;
-            }
+        String sharedLibExtension = CrossPlatform.GetSharedLibExtension();
+        if(sharedLibExtension.equals(CrossPlatform.ERR_UNKNOWN_OS)) {
+            SysIsNotSupported();
+            return;
         }
+        FileNameExtensionFilter filterNameExtension = new FileNameExtensionFilter("PIN-tool (*"
+                + sharedLibExtension + ")", sharedLibExtension.replaceAll("\\.", ""));
         pinToolChooser = new JFileChooser();
         pinToolChooser.setDialogTitle("Open PIN-tool");
         pinToolChooser.setMultiSelectionEnabled(false);
@@ -143,9 +132,11 @@ public class MainForm extends javax.swing.JFrame {
         execFile = jFileExec.getSelectedFile();
 
         if(pinToolFile == null || !pinToolFile.exists())
-            { new MsgBox(this, "Warning!", "PIN-tool is not selected!").setVisible(true); }
+            { new MsgBox(this, "Warning!", "PIN-tool is not selected!",
+                    MsgBox.ACTION_OK).setVisible(true); }
         else if(execFile == null || !execFile.exists())
-            { new MsgBox(this, "Warning!", "The application under test is not selected!").setVisible(true); }
+            { new MsgBox(this, "Warning!", "The application under test is not selected!",
+                    MsgBox.ACTION_OK).setVisible(true); }
         else
         {
             AnalyzerThread analyzerThread = null;
@@ -153,7 +144,12 @@ public class MainForm extends javax.swing.JFrame {
                 analyzerThread = new AnalyzerThread(this, pinToolFile.getAbsolutePath(),
                     execFile.getAbsolutePath());
             } catch (IOException ex) {
-                SysIsNotSupported();
+                if(ex.getMessage().equals(CrossPlatform.ERR_UNKNOWN_OS)) {
+                    SysIsNotSupported();
+                    return;
+                }
+                new MsgBox(this, "Error!", ex.getMessage(),
+                    MsgBox.ACTION_OK).setVisible(true);
             }
             
             if(analyzerThread != null)

@@ -5,6 +5,11 @@
  */
 package memoryanalyzer;
 
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import javax.swing.JFrame;
+import memoryanalyzer.WaitBoxThread.WaitBoxFeedback;
+
 /**
  *
  * @author master
@@ -13,11 +18,61 @@ public class WaitBox extends javax.swing.JFrame {
 
     /**
      * Creates new form WaitBox
+     * @param retJFrame
      */
-    public WaitBox() {
+    public WaitBox(JFrame retJFrame) {
         initComponents();
+        resetParameters();
+        // Save feedback
+        this.retJFrame = retJFrame;
+        setCenterPosition();
     }
-
+    
+    private void resetParameters() {
+        waitBoxFeedback = null;
+        waitBoxThread = null;
+    }
+    
+    private void setCenterPosition() {
+        Point p = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
+        this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
+    }
+    
+    public void updateProgress() {
+        if(waitBoxFeedback != null) {    
+            jProgressBar.setValue(waitBoxFeedback.progress);
+        }
+    }
+    
+    public boolean waitingStart() {
+        // Disabled feedback
+        retJFrame.setEnabled(false);
+        if(waitBoxThread != null) {
+            return false;
+        }
+        else {
+            waitBoxFeedback = new WaitBoxFeedback();
+            waitBoxFeedback.wait = true;
+            waitBoxFeedback.progress = 0;
+            waitBoxThread = new WaitBoxThread(this, waitBoxFeedback);
+            waitBoxThread.start();
+            return true;
+        }
+    }
+    
+    public void waitingStop() {
+        if(waitBoxFeedback != null) {
+            waitBoxFeedback.wait = false;
+        }
+        // Enabled feedback until before a thread
+        retJFrame.setEnabled(true);
+        resetParameters();
+    }
+    
+    private final JFrame retJFrame;
+    private WaitBoxFeedback waitBoxFeedback;
+    private WaitBoxThread waitBoxThread;
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -30,12 +85,18 @@ public class WaitBox extends javax.swing.JFrame {
         jProgressBar = new javax.swing.JProgressBar();
         jLabelState = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Waiting");
         setCursor(new java.awt.Cursor(java.awt.Cursor.WAIT_CURSOR));
         setMaximumSize(new java.awt.Dimension(320, 70));
         setMinimumSize(new java.awt.Dimension(320, 70));
         setPreferredSize(new java.awt.Dimension(320, 70));
         setResizable(false);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosed(java.awt.event.WindowEvent evt) {
+                formWindowClosed(evt);
+            }
+        });
 
         jLabelState.setText("Capture info...");
 
@@ -62,6 +123,10 @@ public class WaitBox extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
+        waitingStop();
+    }//GEN-LAST:event_formWindowClosed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabelState;

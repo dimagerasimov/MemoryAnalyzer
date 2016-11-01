@@ -15,18 +15,17 @@ import javax.swing.JFrame;
  */
 public class MsgBox extends javax.swing.JFrame {
 
-    /**
-     * Creates new form MsgBox
-     * @param retJFrame
-     * @param title
-     * @param message
-     */
-    public MsgBox(JFrame retJFrame, String title, String message) {
+    public final static int ACTION_OK = 0;
+    public final static int ACTION_CLOSE = 1;
+    
+    public MsgBox(JFrame retJFrame, String title, String message, int KEY_ACTION) {
         initComponents();
         //Set properties the MsgBox
         InitMsgBox(title, message);
         //Remember return frame
         this.retJFrame =  retJFrame;
+        //Remember action key
+        this.key_action = KEY_ACTION;
         //Disable a frame which called the MsgBox
         retJFrame.setEnabled(false);
         retJFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -55,7 +54,7 @@ public class MsgBox extends javax.swing.JFrame {
         jButtonOk = new javax.swing.JButton();
         jLabelMessage = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setAlwaysOnTop(true);
         setMaximumSize(new java.awt.Dimension(300, 200));
         setMinimumSize(new java.awt.Dimension(300, 110));
@@ -110,9 +109,18 @@ public class MsgBox extends javax.swing.JFrame {
     
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
         // TODO add your handling code here:
-        //Enable a frame which called the MsgBox
-        retJFrame.setEnabled(true);
-        retJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        switch(key_action) {
+            case ACTION_CLOSE:
+                //Close feedback
+                retJFrame.setVisible(false);
+                retJFrame.dispose();
+                break;
+            default:
+                //Enable a frame which called the MsgBox
+                retJFrame.setEnabled(true);
+                retJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                break;
+        }
     }//GEN-LAST:event_formWindowClosed
 
     private void jButtonOkMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonOkMouseClicked
@@ -123,6 +131,7 @@ public class MsgBox extends javax.swing.JFrame {
     
     // My variables
     private final JFrame retJFrame;
+    private final int key_action;
      
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonOk;

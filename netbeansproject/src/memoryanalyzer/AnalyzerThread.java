@@ -5,7 +5,6 @@
  */
 package memoryanalyzer;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**
@@ -22,36 +21,26 @@ public class AnalyzerThread extends Thread {
     }
     @Override
     public void run() {
-        retMainForm.setEnabled(false);
+        // WaitBox is needed to show progress of work a program
+        WaitBox waitBox = new WaitBox(retMainForm);
+        waitBox.setVisible(true);
+        //Begin to show progress
+        waitBox.waitingStart();
+        
         try {
             analyzer.RunTest();
             analyzer.ShowResult();
-        } catch (FileNotFoundException ex) {
-            new MsgBox(retMainForm, "Error!", "PIN has non zero exit value.\n" +
-                    "May be selected not executable file.").setVisible(true);
-        } catch (IOException | InterruptedException ex) {
-            String tooltip, myOS;
-            tooltip = "Intel-PIN is not found!\n" +
-                "Check definition of environment variable PATH ";
-            myOS = System.getProperty("os.name");
-            if(myOS == null)
-                { retMainForm.SysIsNotSupported(); }
-            else {
-                switch (myOS) {
-                case "Linux":
-                    tooltip += "in \"/etc/environment\".";
-                    break;
-                case "Windows":
-                    tooltip += "in \"My computer\".";
-                    break;
-                default:
-                    retMainForm.SysIsNotSupported();
-                    return;
-                }
+        } catch (IOException ex) {
+            if(ex.getMessage().equals(CrossPlatform.ERR_UNKNOWN_OS)) {
+                retMainForm.SysIsNotSupported();
             }
-            new MsgBox(retMainForm, "Error!", tooltip).setVisible(true);
+            new MsgBox(retMainForm, "Error!", ex.getMessage(), MsgBox.ACTION_OK).setVisible(true);
         } finally {
-            retMainForm.setEnabled(true);
+            // Stop a scale progress
+            waitBox.waitingStop();
+            // Hide WaitBox and dispose it
+            waitBox.setVisible(false);
+            waitBox.dispose();
         }
     }
     

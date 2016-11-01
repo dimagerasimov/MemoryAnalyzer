@@ -8,7 +8,6 @@ package memoryanalyzer;
 import memoryanalyzer.BinTypes.BinfElement;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -61,7 +60,7 @@ public class BinReader {
         }
         return BytesToLong(bin_to_long);
     }
-    private static long GetMFreeSize(BinfElement element)
+    private static double GetMFreeSizeMB(BinfElement element)
     {
         int offset = 0;
         byte[] bin_to_long = new byte[Long.BYTES / Byte.BYTES];
@@ -84,7 +83,8 @@ public class BinReader {
             default:
                 return -1;
         }
-        return BytesToLong(bin_to_long);
+        return (double)BytesToLong(bin_to_long)
+                / CrossPlatform.GetNumBytesInMb();// In megabytes
     }
     private static BinfElement ReadMFreeItem(DataInputStream dis, boolean reverse) throws IOException
     {
@@ -145,7 +145,7 @@ public class BinReader {
         }
         return element;
     }
-    public static XYSeries ReadMFreeBinFile(String pathBinFile) throws FileNotFoundException, IOException
+    public static XYSeries ReadMFreeBinFile(String pathBinFile) throws IOException
     {  
         // If little endian then reverse byte order, because JRE works big endian
         boolean reverse;
@@ -171,11 +171,12 @@ public class BinReader {
             if(reverse)
                 { rlong = Long.reverseBytes(rlong); }
             if(dis.available() < rlong)
-                { throw new FileNotFoundException(); }
+                { throw new IOException("Binary file was written wrong"); }
         }
 
         int count; //In future analog time (get from binf element)
-        long sum, tmp_key, value_sum;
+        long tmp_key; 
+        double sum, value_sum;
         BinfElement tmp_element, ret_element;
         XYSeries curveOfMemory = new XYSeries("Capacity");
         HashMap<Long, BinfElement> map = new HashMap<>();
@@ -188,11 +189,11 @@ public class BinReader {
             tmp_element = ReadMFreeItem(dis, reverse);
             tmp_key = GetMFreeAddress(tmp_element);
             if(tmp_element == null || tmp_key == -1)
-                { throw new FileNotFoundException(); }
+                { throw new IOException("Binary file was written wrong"); }
             ret_element = map.put(tmp_key, tmp_element);
-            value_sum = GetMFreeSize(tmp_element);
+            value_sum = GetMFreeSizeMB(tmp_element);
             if(value_sum == -1)
-                { value_sum = -GetMFreeSize(ret_element); }
+                { value_sum = -GetMFreeSizeMB(ret_element); }
             sum += value_sum;
             curveOfMemory.add(count, sum);
             count++;
