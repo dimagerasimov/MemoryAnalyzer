@@ -22,26 +22,22 @@ public class AnalyzerThread extends Thread {
     }
     @Override
     public void run() {
-        // WaitBox is needed to show progress of work a program
-        WaitBox waitBox = new WaitBox(retMainForm);
-        waitBox.setVisible(true);
-        //Begin to show progress
-        waitBox.waitingStart();
-        
         try {
+            // Disabled frame feedback
+            retMainForm.setEnabled(false);
+            
             analyzer.RunTest();
             analyzer.ShowResult();
+            
+            // Enabled frame feedback
+            retMainForm.setEnabled(true);
         } catch (IOException ex) {
+            // This code is needing that enabled feedback before MsgBox
+            retMainForm.setEnabled(true);
             if(ex.getMessage().equals(Help.ERR_UNKNOWN_OS)) {
                 retMainForm.SysIsNotSupported();
             }
-            new MsgBox(retMainForm, "Error!", ex.getMessage(), MsgBox.ACTION_OK).setVisible(true);
-        } finally {
-            // Stop a scale progress
-            waitBox.waitingStop();
-            // Hide WaitBox and dispose it
-            waitBox.setVisible(false);
-            waitBox.dispose();
+            new MsgBox(retMainForm, "Warning!", ex.getMessage(), MsgBox.ACTION_OK).setVisible(true);
         }
     }
     

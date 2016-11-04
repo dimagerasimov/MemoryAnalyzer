@@ -20,17 +20,9 @@ public class WaitBox extends javax.swing.JFrame {
      * Creates new form WaitBox
      * @param retJFrame
      */
-    public WaitBox(JFrame retJFrame) {
+    public WaitBox() {
         initComponents();
-        resetParameters();
-        // Save feedback
-        this.retJFrame = retJFrame;
         setCenterPosition();
-    }
-    
-    private void resetParameters() {
-        waitBoxFeedback = null;
-        waitBoxThread = null;
     }
     
     private void setCenterPosition() {
@@ -44,34 +36,34 @@ public class WaitBox extends javax.swing.JFrame {
         }
     }
     
-    public boolean waitingStart() {
-        // Disabled feedback
-        retJFrame.setEnabled(false);
-        if(waitBoxThread != null) {
+    public boolean start(Thread thread_new) {
+        if(thread_new == null) {
             return false;
         }
         else {
+            // Create new feedback for WaitBoxThread 
             waitBoxFeedback = new WaitBoxFeedback();
-            waitBoxFeedback.wait = true;
-            waitBoxFeedback.progress = 0;
-            waitBoxThread = new WaitBoxThread(this, waitBoxFeedback);
+            // Create and run a thread WaitBoxThread
+            WaitBoxThread waitBoxThread = new WaitBoxThread(this, waitBoxFeedback, thread_new);
             waitBoxThread.start();
+
+            // Disabled feedback with main form
+            //retJFrame.setEnabled(false);
+            //Run thread_new
+            this.thread_new = thread_new;
+            thread_new.start();
             return true;
         }
     }
     
-    public void waitingStop() {
-        if(waitBoxFeedback != null) {
-            waitBoxFeedback.wait = false;
-        }
-        // Enabled feedback until before a thread
-        retJFrame.setEnabled(true);
-        resetParameters();
+    public void stop() {
+        //Close this form
+        this.setVisible(false);
+        this.dispose();
     }
     
-    private final JFrame retJFrame;
+    private Thread thread_new;
     private WaitBoxFeedback waitBoxFeedback;
-    private WaitBoxThread waitBoxThread;
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -131,7 +123,10 @@ public class WaitBox extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        waitingStop();
+        // Interrupt a background thread
+        if(thread_new.getState() != Thread.State.TERMINATED) {
+            thread_new.interrupt();
+        }
     }//GEN-LAST:event_formWindowClosed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

@@ -17,7 +17,7 @@ public class MsgBox extends javax.swing.JFrame {
 
     public final static int ACTION_OK = 0;
     public final static int ACTION_CLOSE = 1;
-    
+
     public MsgBox(JFrame retJFrame, String title, String message, int KEY_ACTION) {
         initComponents();
         //Set properties the MsgBox
@@ -26,9 +26,17 @@ public class MsgBox extends javax.swing.JFrame {
         this.retJFrame =  retJFrame;
         //Remember action key
         this.key_action = KEY_ACTION;
-        //Disable a frame which called the MsgBox
-        retJFrame.setEnabled(false);
+        //If frame feedback was enabled then code below changes state
+        if(!retJFrame.isEnabled()) {
+            lock = false;
+        }
+        else {
+            lock = true;
+            retJFrame.setEnabled(false);
+        }
         retJFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        //Remember size of label
+        heightOfLabelMessage = jLabelMessage.getHeight();
     }
     private void InitMsgBox(String title, String message)
     {
@@ -56,9 +64,8 @@ public class MsgBox extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setAlwaysOnTop(true);
-        setMaximumSize(new java.awt.Dimension(300, 200));
-        setMinimumSize(new java.awt.Dimension(300, 110));
-        setPreferredSize(new java.awt.Dimension(300, 110));
+        setMaximumSize(new java.awt.Dimension(300, 500));
+        setMinimumSize(new java.awt.Dimension(300, 100));
         setResizable(false);
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent evt) {
@@ -74,6 +81,12 @@ public class MsgBox extends javax.swing.JFrame {
         });
 
         jLabelMessage.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabelMessage.setVerticalAlignment(javax.swing.SwingConstants.TOP);
+        jLabelMessage.addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                jLabelMessageComponentResized(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -81,21 +94,21 @@ public class MsgBox extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabelMessage, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
-            .addGroup(layout.createSequentialGroup()
-                .addGap(132, 132, 132)
+                .addComponent(jLabelMessage, javax.swing.GroupLayout.PREFERRED_SIZE, 276, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jButtonOk)
-                .addContainerGap(135, Short.MAX_VALUE))
+                .addGap(128, 128, 128))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabelMessage, javax.swing.GroupLayout.PREFERRED_SIZE, 53, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addContainerGap(29, Short.MAX_VALUE)
+                .addComponent(jLabelMessage, javax.swing.GroupLayout.DEFAULT_SIZE, 18, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jButtonOk)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         pack();
@@ -117,7 +130,9 @@ public class MsgBox extends javax.swing.JFrame {
                 break;
             default:
                 //Enable a frame which called the MsgBox
-                retJFrame.setEnabled(true);
+                if(lock) {
+                    retJFrame.setEnabled(true);
+                }
                 retJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 break;
         }
@@ -128,11 +143,20 @@ public class MsgBox extends javax.swing.JFrame {
         this.setVisible(false);
         this.dispose();
     }//GEN-LAST:event_jButtonOkMouseClicked
+
+    private void jLabelMessageComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_jLabelMessageComponentResized
+        this.setSize(this.getWidth(), this.getHeight()
+                + jLabelMessage.getHeight() - heightOfLabelMessage);
+        heightOfLabelMessage = jLabelMessage.getHeight();
+        this.setCenterPosition();
+    }//GEN-LAST:event_jLabelMessageComponentResized
     
     // My variables
     private final JFrame retJFrame;
     private final int key_action;
-     
+    private final boolean lock;
+    private int heightOfLabelMessage;
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonOk;
     private javax.swing.JLabel jLabelMessage;

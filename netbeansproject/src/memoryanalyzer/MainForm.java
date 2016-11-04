@@ -155,7 +155,13 @@ public class MainForm extends javax.swing.JFrame {
             }
             
             if(analyzerThread != null)
-                { analyzerThread.start(); }
+            {
+                // WaitBox is needed to show progress of work a program
+                WaitBox waitBox = new WaitBox();
+                waitBox.setVisible(true);
+                //Begin to show progress
+                waitBox.start(analyzerThread);
+            }
         }
     }//GEN-LAST:event_jButtonNewAnalyzeMouseClicked
     

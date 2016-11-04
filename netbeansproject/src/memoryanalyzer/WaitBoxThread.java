@@ -11,18 +11,19 @@ package memoryanalyzer;
  */
 public class WaitBoxThread extends Thread {
     public static class WaitBoxFeedback {
-        public boolean wait;
         public int progress;
     }
-    WaitBoxThread(WaitBox retWaitBox, WaitBoxFeedback feedback) {
-        this.feedback = feedback;
+    WaitBoxThread(WaitBox retWaitBox, WaitBoxFeedback feedback,
+            Thread retThread) {
         this.retWaitBox = retWaitBox;
+        this.feedback = feedback;
+        this.retThread = retThread;
     }
     @Override
     public void run() {
         try {
             feedback.progress = 0;
-            while(feedback.wait) {
+            while(retThread.getState() != Thread.State.TERMINATED) {
                 retWaitBox.updateProgress();
                 feedback.progress++;
                 if(feedback.progress > 100) {
@@ -32,9 +33,12 @@ public class WaitBoxThread extends Thread {
             }
         } catch (InterruptedException ex) {
             //Do nothing
+        } finally {
+            retWaitBox.stop();
         }
     }
-    
-    private final WaitBoxFeedback feedback;
+
     private final WaitBox retWaitBox;
+    private final WaitBoxFeedback feedback;
+    private final Thread retThread;
 }

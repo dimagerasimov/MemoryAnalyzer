@@ -28,7 +28,7 @@ import static memoryanalyzer.BinReader.ReadMFreeBinFile;
  *
  * @author master
  */
-public class Analyzer {    
+public class Analyzer {
     Analyzer(String pathPinTool, String pathExec) throws IOException
     {
         this.pathPinTool = pathPinTool;
@@ -46,6 +46,25 @@ public class Analyzer {
         }
         return pathPinTool.replaceAll(sharedLibExtension, "");
 
+    }
+    private String GetError(InputStream is) throws IOException {
+        BufferedReader br = new BufferedReader(
+            new InputStreamReader(is));
+
+        String std_out, buffer;
+        std_out = "";
+        while ((buffer = br.readLine()) != null)
+            { std_out += "\n" + buffer; }
+        br.close();
+        
+        return std_out;
+    }
+    private void WritePinLog(String stdOutFile, String log_text) throws IOException {
+        try (BufferedWriter fr = new BufferedWriter(new FileWriter(stdOutFile))) {
+            fr.write(log_text);
+            fr.flush();
+            fr.close();
+        }
     }
     private void WriteStdOutToFile(String stdOutFile, InputStream is) throws IOException
     {
@@ -66,18 +85,31 @@ public class Analyzer {
     }
     public void RunTest() throws IOException
     {   
-        try {
-            Process p = Runtime.getRuntime().exec("pin -t " + pathPinTool +
+        Process p = Runtime.getRuntime().exec("pin -t " + pathPinTool +
                 " -o " + outBinFile + " -- " + pathExec);
+        try {
             p.waitFor();
             if(p.exitValue() != 0)
-                { throw new IOException("PIN has non zero exit value.\n" +
-                    "May be selected not executable file."); }
+            {
+                String error = "PIN has non zero exit value.\n";
+                String pinLog = GetError(p.getInputStream())
+                        + "\n" + GetError(p.getErrorStream());
+                WritePinLog(stdOutFile, pinLog);
+                // Type an error on the screen
+                if(pinLog.length() < 100 && pinLog.split("\n").length < 5) {
+                    error += pinLog;
+                }
+                else {
+                    error += "For more detailed view file " + stdOutFile + ".";
+                }
+                throw new IOException(error);
+            }
             //Write to file in the end
             WriteStdOutToFile(stdOutFile, p.getInputStream());
-            p.destroy();
         } catch (InterruptedException ex) {
-            throw new IOException("This error occurs when thread was interrupted.");
+            throw new IOException("The analyze of a program was interrupted.");
+        } finally {
+            p.destroy();
         }
     }
     public void ShowResult() throws IOException
