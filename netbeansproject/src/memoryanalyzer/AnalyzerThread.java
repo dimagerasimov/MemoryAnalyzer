@@ -5,6 +5,7 @@
  */
 package memoryanalyzer;
 
+import crossplatform.Help;
 import java.io.IOException;
 
 /**
@@ -31,7 +32,7 @@ public class AnalyzerThread extends Thread {
             analyzer.RunTest();
             analyzer.ShowResult();
         } catch (IOException ex) {
-            if(ex.getMessage().equals(CrossPlatform.ERR_UNKNOWN_OS)) {
+            if(ex.getMessage().equals(Help.ERR_UNKNOWN_OS)) {
                 retMainForm.SysIsNotSupported();
             }
             new MsgBox(retMainForm, "Error!", ex.getMessage(), MsgBox.ACTION_OK).setVisible(true);

@@ -7,10 +7,12 @@ package memoryanalyzer;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
-import java.io.File;
-import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.File;
+import java.io.IOException;
+import crossplatform.Help;
+
 /**
  *
  * @author master
@@ -111,8 +113,8 @@ public class MainForm extends javax.swing.JFrame {
     
     private void initPinToolChooser()
     {
-        String sharedLibExtension = CrossPlatform.GetSharedLibExtension();
-        if(sharedLibExtension.equals(CrossPlatform.ERR_UNKNOWN_OS)) {
+        String sharedLibExtension = Help.GetSharedLibExtension();
+        if(sharedLibExtension.equals(Help.ERR_UNKNOWN_OS)) {
             SysIsNotSupported();
             return;
         }
@@ -144,7 +146,7 @@ public class MainForm extends javax.swing.JFrame {
                 analyzerThread = new AnalyzerThread(this, pinToolFile.getAbsolutePath(),
                     execFile.getAbsolutePath());
             } catch (IOException ex) {
-                if(ex.getMessage().equals(CrossPlatform.ERR_UNKNOWN_OS)) {
+                if(ex.getMessage().equals(Help.ERR_UNKNOWN_OS)) {
                     SysIsNotSupported();
                     return;
                 }

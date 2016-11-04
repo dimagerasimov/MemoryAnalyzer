@@ -5,102 +5,98 @@
  */
 package memoryanalyzer;
 
-import memoryanalyzer.BinTypes.BinfElement;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 import org.jfree.data.xy.XYSeries;
+import bintypes.BinfElement;
+import bintypes.Ptr;
+import bintypes.Size_t;
+import static crossplatform.Help.GetNumBytesInMb;
+import static bintypes.Ptr.bytesToPtr;
+import static bintypes.Ptr.ptrToBytes;
+import static bintypes.Ptr.readPtr;
+import static bintypes.Size_t.bytesToSize_t;
+import static bintypes.Size_t.readSize_t;
+import static bintypes.Size_t.size_tToBytes;
 
 /**
  *
  * @author master
  */
 public class BinReader {
-    private static byte[] LongToBytes(long x) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(x);
-        return buffer.array();
-    }
-    private static long BytesToLong(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.put(bytes);
-        buffer.flip();
-        return buffer.getLong();
-    }
-    private static void SkipSection(DataInputStream dis) throws IOException
+    private static void SkipSection(DataInputStream dis, boolean reverse) throws IOException
     {
-        Long rlong;
-        if(dis.available() >= BinTypes.SIZE_OF_SIZE_T)
+        Size_t size;
+        if(dis.available() >= Size_t.getSize())
         {
-            rlong = dis.readLong();
-            if(dis.available() >= rlong)
-                { dis.skip(rlong); }
+            size = readSize_t(dis, reverse);
+            if(dis.available() >= size.getValue())
+                { dis.skip(size.getValue()); }
         }
     }
-    private static long GetMFreeAddress(BinfElement element)
+    private static Ptr GetMFreeAddress(BinfElement element)
     {
         int offset = 0;
-        byte[] bin_to_long = new byte[BinTypes.SIZE_OF_PTR];
+        byte[] bytes_to_ptr = new byte[Ptr.getSize()];
         switch(element.code_function) {
-            case BinTypes.FCODE_MALLOC:
+            case BinfElement.FCODE_MALLOC:
                 //arg0
-                for(int i = 0; i < BinTypes.SIZE_OF_PTR; i++)
-                    { bin_to_long[i] = element.data[i + offset]; }
+                for(int i = 0; i < Ptr.getSize(); i++)
+                    { bytes_to_ptr[i] = element.data[i + offset]; }
                 break;
-            case BinTypes.FCODE_FREE:
+            case BinfElement.FCODE_FREE:
                 //arg0
-                for(int i = 0; i < BinTypes.SIZE_OF_PTR; i++)
-                    { bin_to_long[i] = element.data[i + offset]; }
+                for(int i = 0; i < Ptr.getSize(); i++)
+                    { bytes_to_ptr[i] = element.data[i + offset]; }
                 break;
             default:
-                return -1;
+                return new Ptr(-1);
         }
-        return BytesToLong(bin_to_long);
+        return bytesToPtr(bytes_to_ptr);
     }
-    private static double GetMFreeSizeMB(BinfElement element)
+    private static Size_t GetMFreeSize(BinfElement element)
     {
         int offset = 0;
-        byte[] bin_to_long = new byte[BinTypes.SIZE_OF_SIZE_T];
+        byte[] bytes_to_size_t = new byte[Size_t.getSize()];
         switch(element.code_function) {
-            case BinTypes.FCODE_MALLOC:
+            case BinfElement.FCODE_MALLOC:
                 //arg1
                 switch(element.types[0]){
-                    case BinTypes.TCODE_PTR:
-                        offset += BinTypes.SIZE_OF_PTR;
+                    case BinfElement.TCODE_PTR:
+                        offset += Ptr.getSize();
                         break;
-                    case BinTypes.TCODE_SIZE_T:
-                        offset += BinTypes.SIZE_OF_SIZE_T;
+                    case BinfElement.TCODE_SIZE_T:
+                        offset += Size_t.getSize();
                         break;
                     default:
-                        return -1;
+                        return new Size_t(-1);
                 }
-                for(int i = 0; i < BinTypes.SIZE_OF_SIZE_T; i++)
-                    { bin_to_long[i] = element.data[i + offset]; }
+                for(int i = 0; i < Size_t.getSize(); i++)
+                    { bytes_to_size_t[i] = element.data[i + offset]; }
                 break;
             default:
-                return -1;
+                return new Size_t(-1);
         }
-        return (double)BytesToLong(bin_to_long)
-                / CrossPlatform.GetNumBytesInMb();// In megabytes
+        return bytesToSize_t(bytes_to_size_t);
     }
     private static BinfElement ReadMFreeItem(DataInputStream dis, boolean reverse) throws IOException
     {
         BinfElement element = new BinfElement();
         //READ FUNCTION CODE
-        if(dis.available() < BinTypes.SIZE_OF_BYTE)
+        if(dis.available() < Byte.BYTES)
             { return null; }
         else
             { element.code_function = dis.readByte(); }
         //READ COUNT
-        if(dis.available() < BinTypes.SIZE_OF_BYTE)
+        if(dis.available() < Byte.BYTES)
             { return null; }
         else
             { element.count = dis.readByte(); }
         //READ TYPES
-        if(dis.available() < element.count * BinTypes.SIZE_OF_BYTE)
+        if(dis.available() < element.count * Byte.BYTES)
             { return null; }
         else
         {
@@ -108,36 +104,29 @@ public class BinReader {
             dis.read(element.types, 0, element.count);
         }
         //READ SIZE OF DATA
-        if(dis.available() < BinTypes.SIZE_OF_BYTE)
+        if(dis.available() < Byte.BYTES)
             { return null; }
         else
             { element.size_of_data = dis.readByte(); }
         //READ DATA
-        long rlong;
-        byte[] long_to_bin;
+        byte[] bytes_buffer;
         element.data = new byte[element.size_of_data];
         for(int i = 0, offset = 0; i < element.count; i++)
         {
             switch(element.types[i]) {
-                case BinTypes.TCODE_PTR:
-                    rlong = dis.readLong();
-                    if(reverse) {
-                        rlong = Long.reverseBytes(rlong);
-                    }
-                    long_to_bin = LongToBytes(rlong);
-                    System.arraycopy(long_to_bin, 0,
-                            element.data, offset, long_to_bin.length);
-                    offset += long_to_bin.length;
+                case BinfElement.TCODE_PTR:
+                    Ptr pointer = readPtr(dis, reverse);
+                    bytes_buffer = ptrToBytes(pointer);
+                    System.arraycopy(bytes_buffer, 0,
+                            element.data, offset, bytes_buffer.length);
+                    offset += bytes_buffer.length;
                     break;
-                case BinTypes.TCODE_SIZE_T:
-                    rlong = dis.readLong();
-                    if(reverse) {
-                        rlong = Long.reverseBytes(rlong);
-                    }
-                    long_to_bin = LongToBytes(rlong);
-                    System.arraycopy(long_to_bin, 0,
-                            element.data, offset, long_to_bin.length);
-                    offset += long_to_bin.length;
+                case BinfElement.TCODE_SIZE_T:
+                    Size_t size = readSize_t(dis, reverse);
+                    bytes_buffer = size_tToBytes(size);
+                    System.arraycopy(bytes_buffer, 0,
+                            element.data, offset, bytes_buffer.length);
+                    offset += bytes_buffer.length;
                     break;
                 default:
                     return null;
@@ -152,32 +141,27 @@ public class BinReader {
         reverse = ByteOrder.nativeOrder() != ByteOrder.BIG_ENDIAN;
         
         byte rbyte;
-        long rlong;
+        Size_t size;
         boolean isMFree = false;
         DataInputStream dis = new DataInputStream(new FileInputStream(pathBinFile));
-        while(dis.available() > BinTypes.SIZE_OF_BYTE)
+        while(dis.available() > Byte.BYTES)
         {
             rbyte = dis.readByte();
-            if(rbyte == BinTypes.MFREE_SECTION)
+            if(rbyte == BinfElement.MFREE_SECTION)
                 { isMFree = true; break; }
             else
-                { SkipSection(dis); }
+                { SkipSection(dis, reverse); }
         }
         if(!isMFree)
             { return null; }
-        if(dis.available() >= BinTypes.SIZE_OF_SIZE_T)
-        {
-            rlong = dis.readLong();
-            if(reverse)
-                { rlong = Long.reverseBytes(rlong); }
-            if(dis.available() < rlong)
-                { throw new IOException("Binary file was written wrong"); }
+        if(dis.available() >= Size_t.getSize()) {
+            size = readSize_t(dis, reverse);
         }
 
         int count; //In future analog time (get from binf element)
-        long tmp_key; 
+        long tmp_long_key; 
         double sum, value_sum;
-        BinfElement tmp_element, ret_element;
+        BinfElement tmpBinfElement, retBinfElement;
         XYSeries curveOfMemory = new XYSeries("Capacity");
         HashMap<Long, BinfElement> map = new HashMap<>();
 
@@ -186,15 +170,15 @@ public class BinReader {
         count = 1; sum = 0;
         while(dis.available() > 0)
         {
-            tmp_element = ReadMFreeItem(dis, reverse);
-            tmp_key = GetMFreeAddress(tmp_element);
-            if(tmp_element == null || tmp_key == -1)
-                { throw new IOException("Binary file was written wrong"); }
-            ret_element = map.put(tmp_key, tmp_element);
-            value_sum = GetMFreeSizeMB(tmp_element);
+            tmpBinfElement = ReadMFreeItem(dis, reverse);
+            tmp_long_key = GetMFreeAddress(tmpBinfElement).getValue();
+            if(tmpBinfElement == null || tmp_long_key == -1)
+                { throw new IOException("Binary file was written wrong."); }
+            retBinfElement = map.put(tmp_long_key, tmpBinfElement);
+            value_sum = GetMFreeSize(tmpBinfElement).getValue();
             if(value_sum == -1)
-                { value_sum = -GetMFreeSizeMB(ret_element); }
-            sum += value_sum;
+                { value_sum = -GetMFreeSize(retBinfElement).getValue(); }
+            sum += (double)value_sum / GetNumBytesInMb();
             curveOfMemory.add(count, sum);
             count++;
         }

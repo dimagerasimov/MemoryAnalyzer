@@ -3,20 +3,15 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package memoryanalyzer;
+package bintypes;
 
 /**
  *
  * @author master
  */
-public class BinTypes {
+public class BinfElement {
     //SECTIONS
     public static final byte MFREE_SECTION = 0x01;
-
-    //SIZE OF DIFFRENT TYPES
-    public static final int SIZE_OF_BYTE = Byte.BYTES;
-    public static final int SIZE_OF_PTR = Long.BYTES;
-    public static final int SIZE_OF_SIZE_T = Long.BYTES;
     
     //FUNCTION CODES
     public static final byte TCODE_PTR = 0;
@@ -26,11 +21,10 @@ public class BinTypes {
     public static final byte FCODE_MALLOC = 0;
     public static final byte FCODE_FREE = 1;
     
-    public static class BinfElement{
-	public byte code_function;
-        public byte count;
-        public byte types[];
-        public byte size_of_data;
-	public byte data[];
-    }
+    //Public content
+    public byte code_function;
+    public byte count;
+    public byte types[];
+    public byte size_of_data;
+    public byte data[];
 }

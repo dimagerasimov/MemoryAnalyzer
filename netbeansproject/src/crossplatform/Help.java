@@ -3,13 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package memoryanalyzer;
+package crossplatform;
 
 /**
  *
  * @author master
  */
-public class CrossPlatform {
+public class Help {
     //Memory constants
     public static final int WIN_MB = 1<<20;//2^20
     public static final int LINUX_MB = 1000000;
@@ -20,7 +20,9 @@ public class CrossPlatform {
     public static String GetOS() {
         return System.getProperty("os.name");
     }
-    
+    public static String GetArchitecture() {
+        return System.getProperty("os.arch");
+    }
     public static int GetNumBytesInMb() {
         String myOS = GetOS();
         if(myOS == null)
@@ -36,7 +38,6 @@ public class CrossPlatform {
                 return WIN_MB;
         }
     }
-    
     public static String GetSharedLibExtension() {
         String myOS = GetOS();
         if(myOS == null)
@@ -51,7 +52,6 @@ public class CrossPlatform {
                 return "";
         }
     }
-    
     public static String GetTooltipEditVarPATH() {
         String myOS = GetOS();
         if(myOS == null)

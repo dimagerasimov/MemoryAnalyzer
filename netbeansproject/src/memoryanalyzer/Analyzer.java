@@ -7,14 +7,13 @@ package memoryanalyzer;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
-import static memoryanalyzer.BinReader.ReadMFreeBinFile;
+import javax.swing.JFrame;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import javax.swing.JFrame;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -22,6 +21,8 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import crossplatform.Help;
+import static memoryanalyzer.BinReader.ReadMFreeBinFile;
 
 /**
  *
@@ -39,9 +40,9 @@ public class Analyzer {
     private String GetOutFilePattern(String pathPinTool) throws IOException
     {
         String sharedLibExtension;
-        sharedLibExtension = CrossPlatform.GetSharedLibExtension();
-        if(sharedLibExtension.equals(CrossPlatform.ERR_UNKNOWN_OS)) {
-            throw new IOException(CrossPlatform.ERR_UNKNOWN_OS);
+        sharedLibExtension = Help.GetSharedLibExtension();
+        if(sharedLibExtension.equals(Help.ERR_UNKNOWN_OS)) {
+            throw new IOException(Help.ERR_UNKNOWN_OS);
         }
         return pathPinTool.replaceAll(sharedLibExtension, "");
 
