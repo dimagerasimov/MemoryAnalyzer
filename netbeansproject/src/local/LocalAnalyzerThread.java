@@ -3,22 +3,24 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package memoryanalyzer;
+package local;
 
 import crossplatform.Help;
 import java.io.IOException;
+import memoryanalyzer.MainForm;
+import memoryanalyzer.MsgBox;
 
 /**
  *
  * @author master
  */
-public class AnalyzerThread extends Thread {
-    AnalyzerThread(MainForm mainForm, String pinToolAbsolutePath,
+public class LocalAnalyzerThread extends Thread {
+    public LocalAnalyzerThread(MainForm mainForm, String pinToolAbsolutePath,
             String execAbsolutePath) throws IOException
     {
         super();
         retMainForm = mainForm;
-        analyzer = new Analyzer(pinToolAbsolutePath, execAbsolutePath);
+        analyzer = new LocalAnalyzer(pinToolAbsolutePath, execAbsolutePath);
     }
     @Override
     public void run() {
@@ -41,6 +43,6 @@ public class AnalyzerThread extends Thread {
         }
     }
     
-    private final Analyzer analyzer;
+    private final LocalAnalyzer analyzer;
     private final MainForm retMainForm;
 }

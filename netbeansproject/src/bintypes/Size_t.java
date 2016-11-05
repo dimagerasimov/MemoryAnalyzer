@@ -84,6 +84,26 @@ public class Size_t {
             return Int32ToBytes((int)size.getValue());
         }
     }
+    public static Size_t readSize_t(byte[] content, int offset,
+            boolean reverse) throws IOException {
+        Size_t size;
+        byte[] buffer;
+        String myArch = GetArchitecture();
+        if(myArch.contains("64")) {
+            buffer = new byte[Long.BYTES];
+            System.arraycopy(content, offset, buffer, 0, Long.BYTES);
+            size = bytesToSize_t(buffer);
+        }
+        else {
+            buffer = new byte[Integer.BYTES];
+            System.arraycopy(content, offset, buffer, 0, Integer.BYTES);
+            size = bytesToSize_t(buffer);
+        } 
+        if(reverse) {
+            size = size.reverseBytes();
+        }
+        return size;
+    }
     public static Size_t readSize_t(DataInputStream dis,
             boolean reverse) throws IOException {
         Size_t size;

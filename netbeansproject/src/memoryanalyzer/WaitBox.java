@@ -7,7 +7,6 @@ package memoryanalyzer;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
-import javax.swing.JFrame;
 import memoryanalyzer.WaitBoxThread.WaitBoxFeedback;
 
 /**
@@ -15,11 +14,6 @@ import memoryanalyzer.WaitBoxThread.WaitBoxFeedback;
  * @author master
  */
 public class WaitBox extends javax.swing.JFrame {
-
-    /**
-     * Creates new form WaitBox
-     * @param retJFrame
-     */
     public WaitBox() {
         initComponents();
         setCenterPosition();

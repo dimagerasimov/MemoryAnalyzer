@@ -42,7 +42,9 @@ public class MsgBox extends javax.swing.JFrame {
     {
         this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         this.setTitle(title);
-        this.jLabelMessage.setText(ConvertToMultiline(message));
+        String multiline_text = ConvertToMultiline(message);
+        this.jLabelMessage.setText(multiline_text);
+        this.jLabelMessage.setToolTipText(multiline_text);
         this.setCenterPosition();
     }
     private String ConvertToMultiline(String line)

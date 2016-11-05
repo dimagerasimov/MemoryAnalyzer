@@ -84,6 +84,26 @@ public class Ptr {
             return Int32ToBytes((int)pointer.getValue());
         }
     }
+    public static Ptr readPtr(byte[] content, int offset,
+            boolean reverse) throws IOException {
+        Ptr pointer;
+        byte[] buffer;
+        String myArch = GetArchitecture();
+        if(myArch.contains("64")) {
+            buffer = new byte[Long.BYTES];
+            System.arraycopy(content, offset, buffer, 0, Long.BYTES);
+            pointer = bytesToPtr(buffer);
+        }
+        else {
+            buffer = new byte[Integer.BYTES];
+            System.arraycopy(content, offset, buffer, 0, Integer.BYTES);
+            pointer = bytesToPtr(buffer);
+        }        
+        if(reverse) {
+            pointer = pointer.reverseBytes();
+        }
+        return pointer;
+    }
     public static Ptr readPtr(DataInputStream dis,
             boolean reverse) throws IOException {
         Ptr pointer;

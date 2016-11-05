@@ -5,6 +5,7 @@
  */
 package memoryanalyzer;
 
+import local.LocalAnalyzerThread;
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 import javax.swing.JFileChooser;
@@ -141,9 +142,9 @@ public class MainForm extends javax.swing.JFrame {
                     MsgBox.ACTION_OK).setVisible(true); }
         else
         {
-            AnalyzerThread analyzerThread = null;
+            LocalAnalyzerThread analyzerThread = null;
             try {
-                analyzerThread = new AnalyzerThread(this, pinToolFile.getAbsolutePath(),
+                analyzerThread = new LocalAnalyzerThread(this, pinToolFile.getAbsolutePath(),
                     execFile.getAbsolutePath());
             } catch (IOException ex) {
                 if(ex.getMessage().equals(Help.ERR_UNKNOWN_OS)) {

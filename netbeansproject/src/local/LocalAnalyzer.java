@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package memoryanalyzer;
+package local;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
@@ -22,20 +22,20 @@ import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import crossplatform.Help;
-import static memoryanalyzer.BinReader.ReadMFreeBinFile;
+import static local.BinReader.ReadMFreeBinFile;
 
 /**
  *
  * @author master
  */
-public class Analyzer {
-    Analyzer(String pathPinTool, String pathExec) throws IOException
+public class LocalAnalyzer {
+    LocalAnalyzer(String pathPinTool, String pathExec) throws IOException
     {
         this.pathPinTool = pathPinTool;
         this.pathExec = pathExec;
         String outFilePattern = GetOutFilePattern(pathPinTool);
-        this.outBinFile = outFilePattern + ".bin";
-        this.stdOutFile = outFilePattern + ".out";
+        this.outBinFile = outFilePattern + ".out";
+        this.stdOutFile = outFilePattern + ".stdout";
     }
     private String GetOutFilePattern(String pathPinTool) throws IOException
     {
