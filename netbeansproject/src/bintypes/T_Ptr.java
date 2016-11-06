@@ -17,10 +17,7 @@ import java.io.IOException;
  *
  * @author master
  */
-public class T_Ptr {
-    private final int value_int;
-    private final long value_long;
-    
+public class T_Ptr {  
     public T_Ptr(byte[] bytes) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
@@ -119,4 +116,8 @@ public class T_Ptr {
         }
         return pointer;
     }
+    
+    // Private variables
+    private final int value_int;
+    private final long value_long;
 }

@@ -14,13 +14,13 @@ import memoryanalyzer.MsgBox;
  *
  * @author master
  */
-public class LocalAnalyzerThread extends Thread {
-    public LocalAnalyzerThread(MainForm mainForm, String pinToolAbsolutePath,
+public class LocalManagerThread extends Thread {
+    public LocalManagerThread(MainForm mainForm, String pinToolAbsolutePath,
             String execAbsolutePath) throws IOException
     {
         super();
         retMainForm = mainForm;
-        analyzer = new LocalAnalyzer(pinToolAbsolutePath, execAbsolutePath);
+        analyzer = new LocalManager(pinToolAbsolutePath, execAbsolutePath);
     }
     @Override
     public void run() {
@@ -41,6 +41,7 @@ public class LocalAnalyzerThread extends Thread {
         }
     }
     
-    private final LocalAnalyzer analyzer;
+    // Private variables
+    private final LocalManager analyzer;
     private final MainForm retMainForm;
 }

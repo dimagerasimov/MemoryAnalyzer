@@ -15,8 +15,6 @@ import java.io.IOException;
  * @author master
  */
 public class T_Long {
-    private final long value_long;
-    
     public T_Long(byte[] bytes) {
         value_long = BytesToInt64(bytes);
     }
@@ -59,4 +57,7 @@ public class T_Long {
         }
         return value;
     }
+    
+    // Private variables
+    private final long value_long;
 }

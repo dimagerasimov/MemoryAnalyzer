@@ -7,6 +7,7 @@ package local;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
+import java.awt.Color;
 import javax.swing.JFrame;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -14,25 +15,21 @@ import java.io.IOException;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.data.xy.TableXYDataset;
 import org.jfree.chart.plot.PlotOrientation;
-import org.jfree.data.xy.XYDataset;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 import crossplatform.Help;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import static local.BinReader.ReadMFreeBinFile;
-
 /**
  *
  * @author master
  */
-public class LocalAnalyzer {
-    LocalAnalyzer(String pathPinTool, String pathInputFile)
+public class LocalManager {
+    LocalManager(String pathPinTool, String pathInputFile)
     {
         this.pathPinTool = pathPinTool;
         this.pathInputFile = pathInputFile;
@@ -119,10 +116,16 @@ public class LocalAnalyzer {
     }
     public static void ShowResults(String pathBinaryFile) throws IOException
     {
-        XYSeries series = ReadMFreeBinFile(pathBinaryFile);
-        XYDataset xyDataset = new XYSeriesCollection(series);
-        JFreeChart chart = ChartFactory.createXYLineChart("Memory consumption",
-            "Timeline", "Capacity (MB)", xyDataset, PlotOrientation.VERTICAL, true, true, true);
+        TableXYDataset xyDataset = ReadMFreeBinFile(pathBinaryFile);
+        JFreeChart chart = ChartFactory.createStackedXYAreaChart("Memory consumption",
+            "Timeline (sec)", "Capacity (mb)", xyDataset, PlotOrientation.VERTICAL, true, true, false);
+        
+        //Setting of colors
+        chart.getXYPlot().getRenderer().setSeriesPaint(0,
+                Color.getHSBColor(0.0f, 0.6f, 0.8f));
+        chart.getXYPlot().getRenderer().setSeriesPaint(1,
+                Color.getHSBColor(0.333f, 0.6f, 0.8f));
+               
         JFrame frameGraphic = new JFrame("Graphics mode");
         frameGraphic.getContentPane().add(new ChartPanel(chart));
         frameGraphic.setSize(600,400);
@@ -141,7 +144,8 @@ public class LocalAnalyzer {
         RunTest(pathPinTool, pathInputFile, outBinFile, stdOutFile);
         ShowResults(outBinFile);
     }
-        
+    
+    // Private variables
     private final String pathPinTool;
     private final String pathInputFile;
 }

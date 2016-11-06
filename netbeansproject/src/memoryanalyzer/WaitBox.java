@@ -56,6 +56,7 @@ public class WaitBox extends javax.swing.JFrame {
         this.dispose();
     }
     
+    // My variables
     private Thread thread_new;
     private WaitBoxFeedback waitBoxFeedback;
     

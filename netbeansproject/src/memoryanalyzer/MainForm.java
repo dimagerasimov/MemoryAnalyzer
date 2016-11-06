@@ -12,8 +12,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
 import crossplatform.Help;
-import local.LocalAnalyzer;
-import local.LocalAnalyzerThread;
+import local.LocalManager;
+import local.LocalManagerThread;
 
 /**
  *
@@ -143,10 +143,10 @@ public class MainForm extends javax.swing.JFrame {
             try {
                 String pathInputFile = inputFile.getAbsolutePath();
                 if(pathInputFile.contains(Help.GetBinaryFileExtension())) {
-                    LocalAnalyzer.ShowResults(pathInputFile);
+                    LocalManager.ShowResults(pathInputFile);
                 }
                 else if(pinToolFile != null && pinToolFile.exists()) {
-                    LocalAnalyzerThread analyzerThread = new LocalAnalyzerThread(this,
+                    LocalManagerThread analyzerThread = new LocalManagerThread(this,
                     pinToolFile.getAbsolutePath(), pathInputFile);
                     // WaitBox is needed to show progress of work a program
                     WaitBox waitBox = new WaitBox();

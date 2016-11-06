@@ -8,26 +8,23 @@ package local;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import org.jfree.data.xy.XYSeries;
 import java.nio.ByteOrder;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.util.ArrayList;
+import org.jfree.data.xy.TableXYDataset;
 import bintypes.BinfElement;
 import bintypes.T_Long;
 import bintypes.T_Ptr;
 import bintypes.T_Size_t;
-import static bintypes.BinfElement.GetMFreeAddress;
-import static bintypes.BinfElement.GetMFreeSize;
-import static bintypes.BinfElement.GetMFreeTime;
-import static bintypes.T_Ptr.readPtr;
-import static bintypes.T_Size_t.readSize_t;
 import static bintypes.T_Ptr.ptrToBytes;
 import static bintypes.T_Long.longToBytes;
-import static bintypes.T_Long.readLong;
 import static bintypes.T_Size_t.size_tToBytes;
-import static crossplatform.Help.GetNumBytesInMb;
+import static local.BinAnalyzer.GetAnalyzeMFree;
+import static bintypes.T_Ptr.readPtr;
+import static bintypes.T_Size_t.readSize_t;
+import static bintypes.T_Long.readLong;
 
 /**
  *
@@ -116,7 +113,7 @@ public class BinReader {
         }
         return element;
     }
-    public static XYSeries ReadMFreeBinFile(String pathBinFile) throws IOException
+    public static TableXYDataset ReadMFreeBinFile(String pathBinFile) throws IOException
     {  
         // If little endian then reverse byte order, because JRE works big endian
         boolean reverse
@@ -152,33 +149,18 @@ public class BinReader {
         dis.read(content, 0, (int)sizeOfSection.getValue());
         //Close binary file
         dis.close();
-                
-        int file_offset; // Offset in file
-        long tmp_long_key, time; 
-        double sum, value_sum;
-        BinfElement tmpBinfElement, retBinfElement;
-        XYSeries curveOfMemory = new XYSeries("Memory");
-        HashMap<Long, BinfElement> map = new HashMap<>();
         
-        // First value
-        curveOfMemory.add(0.0, 0.0);
-        sum = 0;
-        file_offset = 0;
-        while(file_offset < content.length)
-        {
+        int file_offset = 0;
+        BinfElement tmpBinfElement;
+        ArrayList<BinfElement> binfArray = new ArrayList();
+        while(file_offset < content.length) {
             tmpBinfElement = ReadMFreeItem(content, file_offset, reverse);
-            tmp_long_key = GetMFreeAddress(tmpBinfElement).getValue();
-            retBinfElement = map.put(tmp_long_key, tmpBinfElement);
-            value_sum = GetMFreeSize(tmpBinfElement).getValue();
-            if(value_sum == -1)
-                { value_sum = -GetMFreeSize(retBinfElement).getValue(); }
-            sum += (double)value_sum / GetNumBytesInMb();
-            time = GetMFreeTime(tmpBinfElement).getValue();
-            curveOfMemory.add(time / 1000.0, sum);//Add time in ms
+            binfArray.add(tmpBinfElement);
             file_offset += tmpBinfElement.GetSize();
         }
-        map.clear();
-
-        return curveOfMemory;
+        TableXYDataset xyDataset = GetAnalyzeMFree(binfArray);
+        binfArray.clear();
+        
+        return xyDataset;
     }
 }

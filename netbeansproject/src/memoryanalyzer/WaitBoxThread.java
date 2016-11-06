@@ -38,6 +38,7 @@ public class WaitBoxThread extends Thread {
         }
     }
 
+    // Private variables
     private final WaitBox retWaitBox;
     private final WaitBoxFeedback feedback;
     private final Thread retThread;
