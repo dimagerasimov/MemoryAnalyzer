@@ -112,13 +112,22 @@ public class LocalAnalyzer {
             p.destroy();
         }
     }
+    private XYSeries GetBottomRectangle(XYSeries curveOfMemory) {
+        XYSeries bottomRectangle = new XYSeries("Unfreed memory");
+        double unfreed_value_x = curveOfMemory.getX(
+                curveOfMemory.getItemCount() - 1).doubleValue();
+        double unfreed_value_y = curveOfMemory.getY(
+                curveOfMemory.getItemCount() - 1).doubleValue();
+        bottomRectangle.add(0, unfreed_value_y);
+        bottomRectangle.add(unfreed_value_x, unfreed_value_y);
+        return bottomRectangle;
+    } 
     public void ShowResult() throws IOException
     {
         XYSeries series = ReadMFreeBinFile(outBinFile);
         XYDataset xyDataset = new XYSeriesCollection(series);
         JFreeChart chart = ChartFactory.createXYLineChart("Memory consumption",
-                "Timeline", "Capacity (MB)", xyDataset, PlotOrientation.VERTICAL, true, true, true);
-
+            "Timeline", "Capacity (MB)", xyDataset, PlotOrientation.VERTICAL, true, true, true);
         JFrame frameGraphic = new JFrame("Graphics mode");
         frameGraphic.getContentPane().add(new ChartPanel(chart));
         frameGraphic.setSize(600,400);

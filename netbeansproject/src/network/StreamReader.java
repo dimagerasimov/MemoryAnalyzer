@@ -5,15 +5,15 @@
  */
 package network;
 
-import bintypes.BinfElement;
-import bintypes.Ptr;
-import bintypes.Size_t;
-import static bintypes.Ptr.ptrToBytes;
-import static bintypes.Ptr.readPtr;
-import static bintypes.Size_t.readSize_t;
-import static bintypes.Size_t.size_tToBytes;
 import java.io.DataInputStream;
 import java.io.IOException;
+import bintypes.BinfElement;
+import bintypes.T_Ptr;
+import bintypes.T_Size_t;
+import static bintypes.T_Ptr.ptrToBytes;
+import static bintypes.T_Size_t.readSize_t;
+import static bintypes.T_Size_t.size_tToBytes;
+import static bintypes.T_Ptr.readPtr;
 
 /**
  *
@@ -53,14 +53,14 @@ public class StreamReader {
         {
             switch(element.types[i]) {
                 case BinfElement.TCODE_PTR:
-                    Ptr pointer = readPtr(dis, reverse);
+                    T_Ptr pointer = readPtr(dis, reverse);
                     bytes_buffer = ptrToBytes(pointer);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
                     break;
                 case BinfElement.TCODE_SIZE_T:
-                    Size_t size = readSize_t(dis, reverse);
+                    T_Size_t size = readSize_t(dis, reverse);
                     bytes_buffer = size_tToBytes(size);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);

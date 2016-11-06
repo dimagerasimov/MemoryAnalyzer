@@ -8,22 +8,26 @@ package local;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.ByteOrder;
 import java.util.HashMap;
 import org.jfree.data.xy.XYSeries;
-import bintypes.BinfElement;
-import static bintypes.BinfElement.GetMFreeAddress;
-import static bintypes.BinfElement.GetMFreeSize;
-import bintypes.Ptr;
-import bintypes.Size_t;
-import static crossplatform.Help.GetNumBytesInMb;
-import static bintypes.Ptr.ptrToBytes;
-import static bintypes.Ptr.readPtr;
-import static bintypes.Size_t.readSize_t;
-import static bintypes.Size_t.size_tToBytes;
+import java.nio.ByteOrder;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import bintypes.BinfElement;
+import bintypes.T_Long;
+import bintypes.T_Ptr;
+import bintypes.T_Size_t;
+import static bintypes.BinfElement.GetMFreeAddress;
+import static bintypes.BinfElement.GetMFreeSize;
+import static bintypes.BinfElement.GetMFreeTime;
+import static bintypes.T_Ptr.readPtr;
+import static bintypes.T_Size_t.readSize_t;
+import static bintypes.T_Ptr.ptrToBytes;
+import static bintypes.T_Long.longToBytes;
+import static bintypes.T_Long.readLong;
+import static bintypes.T_Size_t.size_tToBytes;
+import static crossplatform.Help.GetNumBytesInMb;
 
 /**
  *
@@ -32,8 +36,8 @@ import java.nio.file.LinkOption;
 public class BinReader {
     private static void SkipSection(DataInputStream dis, boolean reverse) throws IOException
     {
-        Size_t size;
-        if(dis.available() >= Size_t.getSize())
+        T_Size_t size;
+        if(dis.available() >= T_Size_t.getSize())
         {
             size = readSize_t(dis, reverse);
             if(dis.available() >= size.getValue())
@@ -86,15 +90,22 @@ public class BinReader {
         {
             switch(element.types[i]) {
                 case BinfElement.TCODE_PTR:
-                    Ptr pointer = readPtr(content, offset + internal_offset, reverse);
+                    T_Ptr pointer = readPtr(content, offset + internal_offset, reverse);
                     bytes_buffer = ptrToBytes(pointer);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
                     break;
                 case BinfElement.TCODE_SIZE_T:
-                    Size_t size = readSize_t(content, offset + internal_offset, reverse);
+                    T_Size_t size = readSize_t(content, offset + internal_offset, reverse);
                     bytes_buffer = size_tToBytes(size);
+                    System.arraycopy(bytes_buffer, 0,
+                            element.data, offset, bytes_buffer.length);
+                    offset += bytes_buffer.length;
+                    break;
+                case BinfElement.TCODE_LONG:
+                    T_Long long_value = readLong(content, offset + internal_offset, reverse);
+                    bytes_buffer = longToBytes(long_value);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
@@ -128,11 +139,11 @@ public class BinReader {
             else
                 { SkipSection(dis, reverse); }
         }
-        if(!isMFree || dis.available() < Size_t.getSize())
+        if(!isMFree || dis.available() < T_Size_t.getSize())
             { throw new IOException("File content can't be showed.\n"
                     + "May be used not special pin-tool."); }
         //Read size (length) of section
-        Size_t sizeOfSection = readSize_t(dis, reverse);
+        T_Size_t sizeOfSection = readSize_t(dis, reverse);
         if(dis.available() < sizeOfSection.getValue()) {
             throw new IOException("The binary file was written wrong!");
         }
@@ -142,32 +153,28 @@ public class BinReader {
         //Close binary file
         dis.close();
                 
-        int count; // In future analog time (get from binf element)
         int file_offset; // Offset in file
-        long tmp_long_key; 
+        long tmp_long_key, time; 
         double sum, value_sum;
         BinfElement tmpBinfElement, retBinfElement;
-        XYSeries curveOfMemory = new XYSeries("Capacity");
+        XYSeries curveOfMemory = new XYSeries("Memory");
         HashMap<Long, BinfElement> map = new HashMap<>();
-
-        //Add first value (start program)
-        curveOfMemory.add(0, 0);
-        count = 1;
+        
+        // First value
+        curveOfMemory.add(0.0, 0.0);
         sum = 0;
         file_offset = 0;
         while(file_offset < content.length)
         {
             tmpBinfElement = ReadMFreeItem(content, file_offset, reverse);
             tmp_long_key = GetMFreeAddress(tmpBinfElement).getValue();
-            if(tmpBinfElement == null || tmp_long_key == -1)
-                { throw new IOException("Wrong file content!"); }
             retBinfElement = map.put(tmp_long_key, tmpBinfElement);
             value_sum = GetMFreeSize(tmpBinfElement).getValue();
             if(value_sum == -1)
                 { value_sum = -GetMFreeSize(retBinfElement).getValue(); }
             sum += (double)value_sum / GetNumBytesInMb();
-            curveOfMemory.add(count, sum);
-            count++;
+            time = GetMFreeTime(tmpBinfElement).getValue();
+            curveOfMemory.add(time / 1000.0, sum);//Add time in ms
             file_offset += tmpBinfElement.GetSize();
         }
         map.clear();

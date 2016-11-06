@@ -17,11 +17,11 @@ import java.io.IOException;
  *
  * @author master
  */
-public class Size_t {
+public class T_Size_t {
     private final int value_int;
     private final long value_long;
     
-    public Size_t(byte[] bytes) {
+    public T_Size_t(byte[] bytes) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
             value_int = -1; //Size can't be < 0
@@ -32,7 +32,7 @@ public class Size_t {
             value_long = -1; //Size can't be < 0
         }
     }
-    public Size_t(long value) {
+    public T_Size_t(long value) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
             value_int = -1; //Size can't be < 0
@@ -52,14 +52,14 @@ public class Size_t {
             return value_int;
         }
     }
-    public Size_t reverseBytes() {
-        Size_t size;
+    public T_Size_t reverseBytes() {
+        T_Size_t size;
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
-            size= new Size_t(Long.reverseBytes(value_long));
+            size= new T_Size_t(Long.reverseBytes(value_long));
         }
         else {
-            size = new Size_t(Integer.reverseBytes(value_int));
+            size = new T_Size_t(Integer.reverseBytes(value_int));
         }
         return size;
     }
@@ -72,10 +72,10 @@ public class Size_t {
             return Integer.BYTES;
         }
     }
-    public static Size_t bytesToSize_t(byte[] bytes) {
-        return new Size_t(bytes);
+    public static T_Size_t bytesToSize_t(byte[] bytes) {
+        return new T_Size_t(bytes);
     }
-    public static byte[] size_tToBytes(Size_t size) {
+    public static byte[] size_tToBytes(T_Size_t size) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
             return Int64ToBytes(size.getValue());
@@ -84,9 +84,9 @@ public class Size_t {
             return Int32ToBytes((int)size.getValue());
         }
     }
-    public static Size_t readSize_t(byte[] content, int offset,
+    public static T_Size_t readSize_t(byte[] content, int offset,
             boolean reverse) throws IOException {
-        Size_t size;
+        T_Size_t size;
         byte[] buffer;
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
@@ -104,15 +104,15 @@ public class Size_t {
         }
         return size;
     }
-    public static Size_t readSize_t(DataInputStream dis,
+    public static T_Size_t readSize_t(DataInputStream dis,
             boolean reverse) throws IOException {
-        Size_t size;
+        T_Size_t size;
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
-            size = new Size_t(dis.readLong());
+            size = new T_Size_t(dis.readLong());
         }
         else {
-            size = new Size_t(dis.readInt());
+            size = new T_Size_t(dis.readInt());
         } 
         if(reverse) {
             size = size.reverseBytes();

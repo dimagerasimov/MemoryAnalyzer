@@ -17,11 +17,11 @@ import java.io.IOException;
  *
  * @author master
  */
-public class Ptr {
+public class T_Ptr {
     private final int value_int;
     private final long value_long;
     
-    public Ptr(byte[] bytes) {
+    public T_Ptr(byte[] bytes) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
             value_int = -1; //Address can't be < 0
@@ -32,7 +32,7 @@ public class Ptr {
             value_long = -1; //Address can't be < 0
         }
     }
-    public Ptr(long value) {
+    public T_Ptr(long value) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
             value_int = -1; //Address can't be < 0
@@ -52,14 +52,14 @@ public class Ptr {
             return value_int;
         }
     }
-    public Ptr reverseBytes() {
-        Ptr pointer;
+    public T_Ptr reverseBytes() {
+        T_Ptr pointer;
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
-            pointer = new Ptr(Long.reverseBytes(value_long));
+            pointer = new T_Ptr(Long.reverseBytes(value_long));
         }
         else {
-            pointer = new Ptr(Integer.reverseBytes(value_int));
+            pointer = new T_Ptr(Integer.reverseBytes(value_int));
         }
         return pointer;
     }
@@ -72,10 +72,10 @@ public class Ptr {
             return Integer.BYTES;
         }
     }
-    public static Ptr bytesToPtr(byte[] bytes) {
-        return new Ptr(bytes);
+    public static T_Ptr bytesToPtr(byte[] bytes) {
+        return new T_Ptr(bytes);
     }
-    public static byte[] ptrToBytes(Ptr pointer) {
+    public static byte[] ptrToBytes(T_Ptr pointer) {
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
             return Int64ToBytes(pointer.getValue());
@@ -84,9 +84,9 @@ public class Ptr {
             return Int32ToBytes((int)pointer.getValue());
         }
     }
-    public static Ptr readPtr(byte[] content, int offset,
+    public static T_Ptr readPtr(byte[] content, int offset,
             boolean reverse) throws IOException {
-        Ptr pointer;
+        T_Ptr pointer;
         byte[] buffer;
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
@@ -104,15 +104,15 @@ public class Ptr {
         }
         return pointer;
     }
-    public static Ptr readPtr(DataInputStream dis,
+    public static T_Ptr readPtr(DataInputStream dis,
             boolean reverse) throws IOException {
-        Ptr pointer;
+        T_Ptr pointer;
         String myArch = GetArchitecture();
         if(myArch.contains("64")) {
-            pointer = new Ptr(dis.readLong());
+            pointer = new T_Ptr(dis.readLong());
         }
         else {
-            pointer = new Ptr(dis.readInt());
+            pointer = new T_Ptr(dis.readInt());
         }        
         if(reverse) {
             pointer = pointer.reverseBytes();
