@@ -5,7 +5,6 @@
  */
 package memoryanalyzer;
 
-import local.LocalAnalyzerThread;
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 import javax.swing.JFileChooser;
@@ -13,6 +12,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
 import crossplatform.Help;
+import local.LocalAnalyzer;
+import local.LocalAnalyzerThread;
 
 /**
  *
@@ -40,13 +41,13 @@ public class MainForm extends javax.swing.JFrame {
 
         jButtonNewAnalyze = new javax.swing.JButton();
         jButtonSelectPINTool = new javax.swing.JButton();
-        jFileExec = new javax.swing.JFileChooser();
+        jFileInput = new javax.swing.JFileChooser();
         jLabelPinToolName = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Memory Analyzer");
 
-        jButtonNewAnalyze.setText("New analyze");
+        jButtonNewAnalyze.setText("Start");
         jButtonNewAnalyze.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 jButtonNewAnalyzeMouseClicked(evt);
@@ -60,13 +61,13 @@ public class MainForm extends javax.swing.JFrame {
             }
         });
 
-        jFileExec.setApproveButtonText("");
-        jFileExec.setControlButtonsAreShown(false);
-        jFileExec.setCurrentDirectory(null);
-        jFileExec.setDialogTitle("");
-        jFileExec.setToolTipText("");
-        jFileExec.setName(""); // NOI18N
-        jFileExec.setSelectedFiles(null);
+        jFileInput.setApproveButtonText("");
+        jFileInput.setControlButtonsAreShown(false);
+        jFileInput.setCurrentDirectory(null);
+        jFileInput.setDialogTitle("");
+        jFileInput.setToolTipText("");
+        jFileInput.setName(""); // NOI18N
+        jFileInput.setSelectedFiles(null);
 
         jLabelPinToolName.setText("PIN-Tool is not selected");
 
@@ -74,7 +75,7 @@ public class MainForm extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jFileExec, javax.swing.GroupLayout.DEFAULT_SIZE, 628, Short.MAX_VALUE)
+            .addComponent(jFileInput, javax.swing.GroupLayout.DEFAULT_SIZE, 628, Short.MAX_VALUE)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jLabelPinToolName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -87,7 +88,7 @@ public class MainForm extends javax.swing.JFrame {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addComponent(jFileExec, javax.swing.GroupLayout.PREFERRED_SIZE, 313, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jFileInput, javax.swing.GroupLayout.PREFERRED_SIZE, 313, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 12, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -130,22 +131,35 @@ public class MainForm extends javax.swing.JFrame {
     
     private void jButtonNewAnalyzeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonNewAnalyzeMouseClicked
         // TODO add your handling code here:
-        File pinToolFile, execFile;
+        File pinToolFile, inputFile;
         pinToolFile = pinToolChooser.getSelectedFile();
-        execFile = jFileExec.getSelectedFile();
+        inputFile = jFileInput.getSelectedFile();
 
-        if(pinToolFile == null || !pinToolFile.exists())
-            { new MsgBox(this, "Warning!", "PIN-tool is not selected!",
-                    MsgBox.ACTION_OK).setVisible(true); }
-        else if(execFile == null || !execFile.exists())
-            { new MsgBox(this, "Warning!", "The application under test is not selected!",
+        if(inputFile == null || !inputFile.exists())
+            { new MsgBox(this, "Warning!", "The file for start is not selected!",
                     MsgBox.ACTION_OK).setVisible(true); }
         else
         {
-            LocalAnalyzerThread analyzerThread = null;
             try {
-                analyzerThread = new LocalAnalyzerThread(this, pinToolFile.getAbsolutePath(),
-                    execFile.getAbsolutePath());
+                String pathInputFile = inputFile.getAbsolutePath();
+                if(pathInputFile.contains(Help.GetBinaryFileExtension())) {
+                    LocalAnalyzer.ShowResults(pathInputFile);
+                }
+                else if(pinToolFile != null && pinToolFile.exists()) {
+                    LocalAnalyzerThread analyzerThread = new LocalAnalyzerThread(this,
+                    pinToolFile.getAbsolutePath(), pathInputFile);
+                    // WaitBox is needed to show progress of work a program
+                    WaitBox waitBox = new WaitBox();
+                    waitBox.setVisible(true);
+                    //Begin to show progress
+                    waitBox.start(analyzerThread);
+                }
+                else {
+                    new MsgBox(this, "Warning!", "PIN-tool is not selected!",
+                        MsgBox.ACTION_OK).setVisible(true);
+                
+                }   
+                
             } catch (IOException ex) {
                 if(ex.getMessage().equals(Help.ERR_UNKNOWN_OS)) {
                     SysIsNotSupported();
@@ -153,15 +167,6 @@ public class MainForm extends javax.swing.JFrame {
                 }
                 new MsgBox(this, "Error!", ex.getMessage(),
                     MsgBox.ACTION_OK).setVisible(true);
-            }
-            
-            if(analyzerThread != null)
-            {
-                // WaitBox is needed to show progress of work a program
-                WaitBox waitBox = new WaitBox();
-                waitBox.setVisible(true);
-                //Begin to show progress
-                waitBox.start(analyzerThread);
             }
         }
     }//GEN-LAST:event_jButtonNewAnalyzeMouseClicked
@@ -182,7 +187,7 @@ public class MainForm extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonNewAnalyze;
     private javax.swing.JButton jButtonSelectPINTool;
-    private javax.swing.JFileChooser jFileExec;
+    private javax.swing.JFileChooser jFileInput;
     private javax.swing.JLabel jLabelPinToolName;
     // End of variables declaration//GEN-END:variables
 }

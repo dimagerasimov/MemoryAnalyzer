@@ -38,6 +38,20 @@ public class Help {
                 return WIN_MB;
         }
     }
+    public static String GetExecutableFileExtension() {
+        String myOS = GetOS();
+        if(myOS == null)
+            { return ERR_UNKNOWN_OS; }
+
+        switch (myOS) {
+            case "Linux":
+                return "";
+            case "Windows":
+                return ".exe";
+            default:
+                return "";
+        }
+    }
     public static String GetSharedLibExtension() {
         String myOS = GetOS();
         if(myOS == null)
@@ -51,6 +65,12 @@ public class Help {
             default:
                 return "";
         }
+    }
+    public static String GetBinaryFileExtension() {
+        return ".out";
+    }
+    public static String GetStdoutFileExtension() {
+        return ".stout";
     }
     public static String GetTooltipEditVarPATH() {
         String myOS = GetOS();

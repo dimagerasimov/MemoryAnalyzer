@@ -27,10 +27,8 @@ public class LocalAnalyzerThread extends Thread {
         try {
             // Disabled frame feedback
             retMainForm.setEnabled(false);
-            
-            analyzer.RunTest();
-            analyzer.ShowResult();
-            
+            // Start analyzer
+            analyzer.NewAnalyze();
             // Enabled frame feedback
             retMainForm.setEnabled(true);
         } catch (IOException ex) {

@@ -24,7 +24,7 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="jFileExec" alignment="0" pref="628" max="32767" attributes="0"/>
+          <Component id="jFileInput" alignment="0" pref="628" max="32767" attributes="0"/>
           <Group type="102" alignment="1" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Component id="jLabelPinToolName" max="32767" attributes="0"/>
@@ -39,7 +39,7 @@
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="1" attributes="0">
-              <Component id="jFileExec" min="-2" pref="313" max="-2" attributes="0"/>
+              <Component id="jFileInput" min="-2" pref="313" max="-2" attributes="0"/>
               <EmptySpace pref="12" max="32767" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="103" alignment="1" groupAlignment="3" attributes="0">
@@ -56,7 +56,7 @@
   <SubComponents>
     <Component class="javax.swing.JButton" name="jButtonNewAnalyze">
       <Properties>
-        <Property name="text" type="java.lang.String" value="New analyze"/>
+        <Property name="text" type="java.lang.String" value="Start"/>
       </Properties>
       <Events>
         <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jButtonNewAnalyzeMouseClicked"/>
@@ -70,7 +70,7 @@
         <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jButtonSelectPINToolMouseClicked"/>
       </Events>
     </Component>
-    <Component class="javax.swing.JFileChooser" name="jFileExec">
+    <Component class="javax.swing.JFileChooser" name="jFileInput">
       <Properties>
         <Property name="approveButtonText" type="java.lang.String" value=""/>
         <Property name="controlButtonsAreShown" type="boolean" value="false"/>

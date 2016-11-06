@@ -22,6 +22,9 @@ import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import crossplatform.Help;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import static local.BinReader.ReadMFreeBinFile;
 
 /**
@@ -29,25 +32,21 @@ import static local.BinReader.ReadMFreeBinFile;
  * @author master
  */
 public class LocalAnalyzer {
-    LocalAnalyzer(String pathPinTool, String pathExec) throws IOException
+    LocalAnalyzer(String pathPinTool, String pathInputFile)
     {
         this.pathPinTool = pathPinTool;
-        this.pathExec = pathExec;
-        String outFilePattern = GetOutFilePattern(pathPinTool);
-        this.outBinFile = outFilePattern + ".out";
-        this.stdOutFile = outFilePattern + ".stdout";
+        this.pathInputFile = pathInputFile;
     }
-    private String GetOutFilePattern(String pathPinTool) throws IOException
+    private static String GetOutFilePattern4Exec(String pathExec) throws IOException
     {
-        String sharedLibExtension;
-        sharedLibExtension = Help.GetSharedLibExtension();
-        if(sharedLibExtension.equals(Help.ERR_UNKNOWN_OS)) {
+        String executableFileExtension;
+        executableFileExtension = Help.GetExecutableFileExtension();
+        if(executableFileExtension.equals(Help.ERR_UNKNOWN_OS)) {
             throw new IOException(Help.ERR_UNKNOWN_OS);
         }
-        return pathPinTool.replaceAll(sharedLibExtension, "");
-
+        return pathExec.replaceAll(executableFileExtension, "");
     }
-    private String GetError(InputStream is) throws IOException {
+    private static String GetError(InputStream is) throws IOException {
         BufferedReader br = new BufferedReader(
             new InputStreamReader(is));
 
@@ -59,14 +58,14 @@ public class LocalAnalyzer {
         
         return std_out;
     }
-    private void WritePinLog(String stdOutFile, String log_text) throws IOException {
+    private static void WritePinLog(String stdOutFile, String log_text) throws IOException {
         try (BufferedWriter fr = new BufferedWriter(new FileWriter(stdOutFile))) {
             fr.write(log_text);
             fr.flush();
             fr.close();
         }
     }
-    private void WriteStdOutToFile(String stdOutFile, InputStream is) throws IOException
+    private static void WriteStdOutToFile(String stdOutFile, InputStream is) throws IOException
     {
         String std_out = "";
         BufferedReader br = new BufferedReader(
@@ -83,10 +82,16 @@ public class LocalAnalyzer {
             fr.close();
         }
     }
-    public void RunTest() throws IOException
+    private static void DeleteOutFilesIfExists(String outBinFile,
+            String stdOutFile) throws IOException {
+        Files.deleteIfExists(Paths.get(outBinFile));
+        Files.deleteIfExists(Paths.get(stdOutFile));
+    }
+    private static void RunTest(String pathPinTool, String pathInputFile,
+            String outBinFile, String stdOutFile) throws IOException
     {   
         Process p = Runtime.getRuntime().exec("pin -t " + pathPinTool +
-                " -o " + outBinFile + " -- " + pathExec);
+                " -o " + outBinFile + " -- " + pathInputFile);
         try {
             p.waitFor();
             if(p.exitValue() != 0)
@@ -112,19 +117,9 @@ public class LocalAnalyzer {
             p.destroy();
         }
     }
-    private XYSeries GetBottomRectangle(XYSeries curveOfMemory) {
-        XYSeries bottomRectangle = new XYSeries("Unfreed memory");
-        double unfreed_value_x = curveOfMemory.getX(
-                curveOfMemory.getItemCount() - 1).doubleValue();
-        double unfreed_value_y = curveOfMemory.getY(
-                curveOfMemory.getItemCount() - 1).doubleValue();
-        bottomRectangle.add(0, unfreed_value_y);
-        bottomRectangle.add(unfreed_value_x, unfreed_value_y);
-        return bottomRectangle;
-    } 
-    public void ShowResult() throws IOException
+    public static void ShowResults(String pathBinaryFile) throws IOException
     {
-        XYSeries series = ReadMFreeBinFile(outBinFile);
+        XYSeries series = ReadMFreeBinFile(pathBinaryFile);
         XYDataset xyDataset = new XYSeriesCollection(series);
         JFreeChart chart = ChartFactory.createXYLineChart("Memory consumption",
             "Timeline", "Capacity (MB)", xyDataset, PlotOrientation.VERTICAL, true, true, true);
@@ -136,9 +131,17 @@ public class LocalAnalyzer {
                 p.y - frameGraphic.getHeight() / 2);
         frameGraphic.setVisible(true);
     }
-    
+    public void NewAnalyze() throws IOException
+    {
+        String outFilePattern, outBinFile, stdOutFile;
+        outFilePattern = GetOutFilePattern4Exec(pathInputFile);
+        outBinFile = outFilePattern + Help.GetBinaryFileExtension();
+        stdOutFile = outFilePattern + Help.GetStdoutFileExtension();
+        DeleteOutFilesIfExists(outBinFile, stdOutFile);
+        RunTest(pathPinTool, pathInputFile, outBinFile, stdOutFile);
+        ShowResults(outBinFile);
+    }
+        
     private final String pathPinTool;
-    private final String pathExec;
-    private final String outBinFile;
-    private final String stdOutFile;
+    private final String pathInputFile;
 }
