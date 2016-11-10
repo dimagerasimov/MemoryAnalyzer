@@ -14,6 +14,7 @@ import java.io.IOException;
 import crossplatform.Help;
 import common.MsgBox;
 import common.WaitBox;
+import javax.swing.WindowConstants;
 import memoryanalyzer.MainForm;
 
 /**
@@ -162,7 +163,8 @@ public class LocalForm extends javax.swing.JFrame {
                     LocalManagerThread analyzerThread = new LocalManagerThread(this,
                     pinToolFile.getAbsolutePath(), pathInputFile);
                     // WaitBox is needed to show progress of work a program
-                    threadWaitBox = new WaitBox();
+                    threadWaitBox = new WaitBox("Capture info...");
+                    threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
                     threadWaitBox.setVisible(true);
                     //Begin to show progress
                     threadWaitBox.start(analyzerThread);

@@ -14,8 +14,9 @@ import common.WaitBoxThread.WaitBoxFeedback;
  * @author master
  */
 public class WaitBox extends javax.swing.JFrame {
-    public WaitBox() {
+    public WaitBox(String tooltip) {
         initComponents();
+        jLabelState.setText(tooltip);
         setCenterPosition();
     }
     
@@ -84,7 +85,7 @@ public class WaitBox extends javax.swing.JFrame {
         jProgressBar.setMinimumSize(new java.awt.Dimension(290, 20));
         jProgressBar.setPreferredSize(new java.awt.Dimension(290, 20));
 
-        jLabelState.setText("Capture info...");
+        jLabelState.setText("Action");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);

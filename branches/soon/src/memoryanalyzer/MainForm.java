@@ -10,9 +10,9 @@ import java.awt.Point;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import common.MsgBox;
+import common.WaitBox;
 import local.LocalForm;
-import network.ClientForm;
-import network.ServerForm;
+import network.ConnectThread;
 
 /**
  *
@@ -40,12 +40,12 @@ public class MainForm extends javax.swing.JFrame {
         jTextFieldIP.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void changedUpdate(DocumentEvent e) {
-                fixTextJTextFieldIP();
+                isValidTextJTextFieldIP();
             }
 
             @Override
             public void insertUpdate(DocumentEvent e) {
-                fixTextJTextFieldIP();
+                isValidTextJTextFieldIP();
             }
 
             @Override
@@ -59,12 +59,12 @@ public class MainForm extends javax.swing.JFrame {
         jTextFieldPort.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void changedUpdate(DocumentEvent e) {
-                fixTextJTextFieldPort();
+                isValidTextJTextFieldPort();
             }
 
             @Override
             public void insertUpdate(DocumentEvent e) {
-                fixTextJTextFieldPort();
+                isValidTextJTextFieldPort();
             }
 
             @Override
@@ -74,7 +74,7 @@ public class MainForm extends javax.swing.JFrame {
         });
     }
     
-    private void fixTextJTextFieldIP() {
+    private boolean isValidTextJTextFieldIP() {
         boolean isValid = true;
         String text = jTextFieldIP.getText();
         String[] components = text.split("\\.");
@@ -95,14 +95,15 @@ public class MainForm extends javax.swing.JFrame {
                     isValid = false;
                 }
         }
-
         if(!isValid) {
             new MsgBox(this, "Warning!", "Please input valid IP-address!",
                 MsgBox.ACTION_OK).setVisible(true);
+            return false;
         }
+        return true;
     }
     
-    private void fixTextJTextFieldPort() {
+    private boolean isValidTextJTextFieldPort() {
         int tmp;
         String text = jTextFieldPort.getText();
         try {
@@ -112,9 +113,11 @@ public class MainForm extends javax.swing.JFrame {
             }
         } catch(Exception ex) {
             new MsgBox(this, "Warning!",
-                    "Please input valid port (number from 1024 to 65536) !",
+                    "Please input valid port (number from 1024 to 65536)!",
                         MsgBox.ACTION_OK).setVisible(true);
+            return false;
         }
+        return true;
     }
     
     /**
@@ -134,7 +137,7 @@ public class MainForm extends javax.swing.JFrame {
         jLabelPanel = new javax.swing.JPanel();
         jLabelRemoteIP = new javax.swing.JLabel();
         jLabelRemoteIPort = new javax.swing.JLabel();
-        jButtonListen = new javax.swing.JButton();
+        jButtonAccept = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("MemoryAnalyzer");
@@ -204,14 +207,11 @@ public class MainForm extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
-        jButtonListen.setText("Listen");
-        jButtonListen.setToolTipText("Listen to input connection from remote computer");
-        jButtonListen.setMaximumSize(null);
-        jButtonListen.setMinimumSize(null);
-        jButtonListen.setPreferredSize(null);
-        jButtonListen.addMouseListener(new java.awt.event.MouseAdapter() {
+        jButtonAccept.setText("Accept");
+        jButtonAccept.setToolTipText("Listen to input connection from remote computer");
+        jButtonAccept.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jButtonListenMouseClicked(evt);
+                jButtonAcceptMouseClicked(evt);
             }
         });
 
@@ -234,7 +234,7 @@ public class MainForm extends javax.swing.JFrame {
                                 .addGap(18, 18, 18)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jButtonConnect, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jButtonListen, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addComponent(jButtonAccept, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))))
                         .addGap(0, 0, Short.MAX_VALUE))
                     .addComponent(jButtonLocalVersion, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
@@ -253,7 +253,7 @@ public class MainForm extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jTextFieldPort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jButtonListen, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(jButtonAccept, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(8, 8, 8)
                         .addComponent(jLabelPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -270,16 +270,39 @@ public class MainForm extends javax.swing.JFrame {
     }//GEN-LAST:event_jButtonLocalVersionMouseClicked
 
     private void jButtonConnectMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonConnectMouseClicked
-        new ClientForm(this).setVisible(true);
+        if(!isValidTextJTextFieldIP() || !isValidTextJTextFieldPort()) {
+            return;
+        }
+        int port = Integer.valueOf(jTextFieldPort.getText());
+        ConnectThread clientConnect = new ConnectThread(this, jTextFieldIP.getText(),
+            port, ConnectThread.TYPE_CLIENT);
+        
+        WaitBox threadWaitBox = new WaitBox("Connect to remote computer...");
+        threadWaitBox.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        threadWaitBox.setVisible(true);
+        // Begin to show progress
+        threadWaitBox.start(clientConnect);
     }//GEN-LAST:event_jButtonConnectMouseClicked
 
-    private void jButtonListenMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonListenMouseClicked
-        new ServerForm(this).setVisible(true);
-    }//GEN-LAST:event_jButtonListenMouseClicked
+    private void jButtonAcceptMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonAcceptMouseClicked
+        if(!isValidTextJTextFieldPort()) {
+            return;
+        }
+        int port = Integer.valueOf(jTextFieldPort.getText());
+        ConnectThread serverConnect = new ConnectThread(this, null,
+            port, ConnectThread.TYPE_SERVER);
+        
+        WaitBox threadWaitBox = new WaitBox("Wait for incomming connection ("
+            + ConnectThread.TIMEOUT_CONNECTION + " sec.)");
+        threadWaitBox.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        threadWaitBox.setVisible(true);
+        // Begin to show progress
+        threadWaitBox.start(serverConnect);
+    }//GEN-LAST:event_jButtonAcceptMouseClicked
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButtonAccept;
     private javax.swing.JButton jButtonConnect;
-    private javax.swing.JButton jButtonListen;
     private javax.swing.JButton jButtonLocalVersion;
     private javax.swing.JPanel jLabelPanel;
     private javax.swing.JLabel jLabelRemoteComputer;

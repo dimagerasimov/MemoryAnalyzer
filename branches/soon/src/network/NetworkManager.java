@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package local;
+package network;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
@@ -23,13 +23,13 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.data.xy.TableXYDataset;
 import org.jfree.chart.plot.PlotOrientation;
 import crossplatform.Help;
-import static local.BinReader.ReadMFreeBinFile;
+
 /**
  *
  * @author master
  */
-public class LocalManager {
-    public LocalManager(String pathPinTool, String pathInputFile)
+public class NetworkManager {
+    public NetworkManager(String pathPinTool, String pathInputFile)
     {
         this.pathPinTool = pathPinTool;
         this.pathInputFile = pathInputFile;
@@ -114,7 +114,7 @@ public class LocalManager {
             p.destroy();
         }
     }
-    public static void ShowResults(String pathBinaryFile) throws IOException
+ /*   public static void ShowResults(String pathBinaryFile) throws IOException
     {
         TableXYDataset xyDataset = ReadMFreeBinFile(pathBinaryFile);
         JFreeChart chart = ChartFactory.createStackedXYAreaChart("Memory consumption",
@@ -133,7 +133,7 @@ public class LocalManager {
         frameGraphic.setLocation(p.x - frameGraphic.getWidth() / 2,
                 p.y - frameGraphic.getHeight() / 2);
         frameGraphic.setVisible(true);
-    }
+    }*/
     public void NewAnalyze() throws IOException
     {
         String outFilePattern, outBinFile, stdOutFile;
@@ -142,7 +142,7 @@ public class LocalManager {
         stdOutFile = outFilePattern + Help.GetStdoutFileExtension();
         DeleteOutFilesIfExists(outBinFile, stdOutFile);
         RunTest(pathPinTool, pathInputFile, outBinFile, stdOutFile);
-        ShowResults(outBinFile);
+        //ShowResults(outBinFile);
     }
     
     // Private variables

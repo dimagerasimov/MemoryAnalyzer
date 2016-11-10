@@ -26,6 +26,11 @@ public class MsgBox extends javax.swing.JFrame {
         this.retJFrame =  retJFrame;
         //Remember action key
         this.key_action = KEY_ACTION;
+        switch(KEY_ACTION) {
+            case ACTION_CLOSE: {
+                jButtonOk.setText("Close");
+            }
+        }
         //If frame feedback was enabled then code below changes state
         if(!retJFrame.isEnabled()) {
             lock = false;
