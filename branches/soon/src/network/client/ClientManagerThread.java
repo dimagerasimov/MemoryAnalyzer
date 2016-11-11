@@ -15,23 +15,29 @@ import network.client.ClientManager.ClientManagerError;
  * @author master
  */
 public class ClientManagerThread extends Thread {
+    // Frequency of asks
+    public final static int TIMEOUT_ASKS = 4;
+    
     public ClientManagerThread(ClientForm feedback, Socket clientSocket) throws IOException {
         super();
         this.feedback = feedback;
         this.bufferError = new ClientManagerError();
-        this.socket_stream = new ClientManager(clientSocket, bufferError);
+        this.socket_stream = new ClientManager(clientSocket,
+                feedback.getPinPort(), bufferError);
     }
     
     private void showErrorFromBuffer() {
         new MsgBox(feedback, "Error!", bufferError.message,
             MsgBox.ACTION_OK).setVisible(true);
+        bufferError.message = null;
     }
     
     @Override
     public void run() {
         boolean isOk;
         try {
-            isOk = socket_stream.PinInit(feedback.getPathToApp());
+            isOk = socket_stream.PinInit(
+                socket_stream.GetPort(), feedback.getPathToApp());
             if(!isOk) {
                 showErrorFromBuffer();
                 return;
@@ -41,8 +47,23 @@ public class ClientManagerThread extends Thread {
                 showErrorFromBuffer();
                 return;
             }
-        } catch (IOException ex) {
-            new MsgBox(feedback, "Error!", "Connection is lost!",
+            
+            // Getting and showing data 
+            socket_stream.RunShowManagerThread();
+            
+            while(true) {
+                isOk = socket_stream.IsEnd();
+                if(isOk) {
+                    break;
+                } else if(bufferError.message != null) {
+                    showErrorFromBuffer();
+                }
+                Thread.sleep(TIMEOUT_ASKS * 1000);
+            }
+            new MsgBox(feedback, "Notice", "Analyze was finished successfully!",
+                    MsgBox.ACTION_OK).setVisible(true);
+        } catch (IOException | InterruptedException ex) {
+            new MsgBox(feedback, "Error!", "Connection was lost!",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
     }

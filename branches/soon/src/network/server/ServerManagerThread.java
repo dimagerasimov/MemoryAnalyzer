@@ -32,7 +32,7 @@ public class ServerManagerThread extends Thread{
             String full_command, action_command, data_command, result;
             while(true) {
                 full_command = socket_stream.RecvCommand();
-                tmp_splitter = full_command.split(Protocol.DELIMITER);
+                tmp_splitter = full_command.split(Protocol.COM_DELIMITER);
                 action_command = tmp_splitter[0];
                 data_command = "";
                 if(tmp_splitter.length == 2) {
@@ -44,7 +44,12 @@ public class ServerManagerThread extends Thread{
                         break;
                     }
                     case Protocol.PIN_EXEC: {
+                        feedback.addTextLog("New network analyze is running now...");
                         result = socket_stream.PinExec();
+                        break;
+                    }
+                    case Protocol.IS_END: {
+                        result = socket_stream.IsEnd();
                         break;
                     }
                     case Protocol.CLOSE: {
@@ -64,7 +69,7 @@ public class ServerManagerThread extends Thread{
         } catch (InterruptedException ex) {
         } catch (IOException ex) {
             new MsgBox(feedback, "Error!",
-                "Connection is lost!\nThis window will closed!",
+                "Connection was interrupted!",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         } 
     }

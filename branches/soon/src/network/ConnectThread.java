@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import memoryanalyzer.MainForm;
+import static network.Protocol.TIMEOUT_ACCEPT;
+import static network.Protocol.TIMEOUT_CONNECTION;
 
 /**
  *
@@ -21,8 +23,6 @@ public class ConnectThread extends Thread {
     // Constants for type of connection
     public static final int TYPE_SERVER = 0;
     public static final int TYPE_CLIENT = 1;
-    // Constant define a timeout connection
-    public static final int TIMEOUT_CONNECTION = 20;
     
     public ConnectThread(MainForm feedback, String ip,
             int port, int type) {
@@ -43,7 +43,7 @@ public class ConnectThread extends Thread {
                     listenSocket = new ServerSocket(port);
                     listenSocket.setSoTimeout(TIMEOUT_CONNECTION * 1000);
                     socket = listenSocket.accept();
-                    socket.setSoTimeout(TIMEOUT_CONNECTION * 5000);                  
+                    socket.setSoTimeout(TIMEOUT_ACCEPT * 1000);                  
                     new ServerForm(feedback, 
                             listenSocket, socket).setVisible(true);
                     break;

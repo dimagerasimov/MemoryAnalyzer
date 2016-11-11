@@ -13,6 +13,7 @@ import common.MsgBox;
 import common.WaitBox;
 import local.LocalForm;
 import network.ConnectThread;
+import static network.Protocol.TIMEOUT_CONNECTION;
 
 /**
  *
@@ -293,7 +294,7 @@ public class MainForm extends javax.swing.JFrame {
             port, ConnectThread.TYPE_SERVER);
         
         WaitBox threadWaitBox = new WaitBox("Wait for incomming connection ("
-            + ConnectThread.TIMEOUT_CONNECTION + " sec.)");
+            + TIMEOUT_CONNECTION + " sec.)");
         threadWaitBox.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         threadWaitBox.setVisible(true);
         // Begin to show progress

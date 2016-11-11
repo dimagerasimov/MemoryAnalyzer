@@ -24,7 +24,7 @@ import static bintypes.T_Size_t.size_tToBytes;
 import static bintypes.T_Ptr.readPtr;
 import static bintypes.T_Size_t.readSize_t;
 import static bintypes.T_Long.readLong;
-import static local.BinAnalyzer.GetAnalyzeMFree;
+import common.BinAnalyzer;
 
 /**
  *
@@ -158,7 +158,7 @@ public class BinReader {
             binfArray.add(tmpBinfElement);
             file_offset += tmpBinfElement.GetSize();
         }
-        TableXYDataset xyDataset = GetAnalyzeMFree(binfArray);
+        TableXYDataset xyDataset = BinAnalyzer.GetAnalyzeMFree(binfArray);
         binfArray.clear();
         
         return xyDataset;

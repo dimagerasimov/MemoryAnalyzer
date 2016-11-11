@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Calendar;
-import java.util.Date;
 import memoryanalyzer.MainForm;
 
 /**
@@ -59,7 +58,8 @@ public class ServerForm extends javax.swing.JFrame {
     public void addTextLog(String new_log) {
         String all_logs = textLog.getText();
         String current_date = Calendar.getInstance().getTime().toString();
-        textLog.setText(all_logs + current_date + ": " + new_log + "\n");
+        textLog.setText(all_logs + current_date + ":\n\""
+                + new_log + "\"\n");
     }
     
     /**
@@ -87,20 +87,17 @@ public class ServerForm extends javax.swing.JFrame {
         textLog.setMinimumSize(null);
         textLog.setName(""); // NOI18N
         textLog.setPreferredSize(null);
+        textLog.setText("[TEXT LOG]\n\n");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(textLog, javax.swing.GroupLayout.PREFERRED_SIZE, 529, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE))
+            .addComponent(textLog, javax.swing.GroupLayout.DEFAULT_SIZE, 529, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(textLog, javax.swing.GroupLayout.PREFERRED_SIZE, 344, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE))
+            .addComponent(textLog, javax.swing.GroupLayout.DEFAULT_SIZE, 344, Short.MAX_VALUE)
         );
 
         pack();

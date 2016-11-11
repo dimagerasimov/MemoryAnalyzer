@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package network;
+package network.server;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
@@ -23,14 +23,18 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.data.xy.TableXYDataset;
 import org.jfree.chart.plot.PlotOrientation;
 import crossplatform.Help;
+import java.io.DataOutputStream;
 
 /**
  *
  * @author master
  */
-public class NetworkManager {
-    public NetworkManager(String pathPinTool, String pathInputFile)
+public class RunManager {
+    public RunManager(String ip, int port,
+            String pathPinTool, String pathInputFile)
     {
+        this.ip = ip;
+        this.port = port;
         this.pathPinTool = pathPinTool;
         this.pathInputFile = pathInputFile;
     }
@@ -84,11 +88,12 @@ public class NetworkManager {
         Files.deleteIfExists(Paths.get(outBinFile));
         Files.deleteIfExists(Paths.get(stdOutFile));
     }
-    private static void RunTest(String pathPinTool, String pathInputFile,
+    private static void RunTest(String ip, int port, String pathPinTool, String pathInputFile,
             String outBinFile, String stdOutFile) throws IOException
-    {   
+    {
         Process p = Runtime.getRuntime().exec("pin -t " + pathPinTool +
-                " -o " + outBinFile + " -- " + pathInputFile);
+                " -o " + outBinFile + " -- " + pathInputFile
+                + " ip=" + ip + " port=" + String.valueOf(port));
         try {
             p.waitFor();
             if(p.exitValue() != 0)
@@ -114,26 +119,12 @@ public class NetworkManager {
             p.destroy();
         }
     }
- /*   public static void ShowResults(String pathBinaryFile) throws IOException
-    {
-        TableXYDataset xyDataset = ReadMFreeBinFile(pathBinaryFile);
-        JFreeChart chart = ChartFactory.createStackedXYAreaChart("Memory consumption",
-            "Timeline (sec)", "Capacity (mb)", xyDataset, PlotOrientation.VERTICAL, true, true, false);
-        
-        //Setting of colors
-        chart.getXYPlot().getRenderer().setSeriesPaint(0,
-                Color.getHSBColor(0.0f, 0.6f, 0.8f));
-        chart.getXYPlot().getRenderer().setSeriesPaint(1,
-                Color.getHSBColor(0.333f, 0.6f, 0.8f));
-               
-        JFrame frameGraphic = new JFrame("Graphics mode");
-        frameGraphic.getContentPane().add(new ChartPanel(chart));
-        frameGraphic.setSize(600,400);
-        Point p = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
-        frameGraphic.setLocation(p.x - frameGraphic.getWidth() / 2,
-                p.y - frameGraphic.getHeight() / 2);
-        frameGraphic.setVisible(true);
-    }*/
+    public boolean isReady() throws IOException {
+        boolean ok;
+        ok = Files.exists(Paths.get(pathInputFile));
+        ok &= Files.exists(Paths.get(pathPinTool));
+        return ok;
+    }
     public void NewAnalyze() throws IOException
     {
         String outFilePattern, outBinFile, stdOutFile;
@@ -141,11 +132,12 @@ public class NetworkManager {
         outBinFile = outFilePattern + Help.GetBinaryFileExtension();
         stdOutFile = outFilePattern + Help.GetStdoutFileExtension();
         DeleteOutFilesIfExists(outBinFile, stdOutFile);
-        RunTest(pathPinTool, pathInputFile, outBinFile, stdOutFile);
-        //ShowResults(outBinFile);
+        RunTest(ip, port, pathPinTool, pathInputFile, outBinFile, stdOutFile);
     }
     
     // Private variables
+    private final String ip;
+    private final int port;
     private final String pathPinTool;
     private final String pathInputFile;
 }

@@ -8,6 +8,9 @@ package network.client;
 import java.io.DataInputStream;
 import java.io.IOException;
 import bintypes.BinfElement;
+import bintypes.T_Long;
+import static bintypes.T_Long.longToBytes;
+import static bintypes.T_Long.readLong;
 import bintypes.T_Ptr;
 import bintypes.T_Size_t;
 import static bintypes.T_Ptr.ptrToBytes;
@@ -20,7 +23,7 @@ import static bintypes.T_Ptr.readPtr;
  * @author master
  */
 public class StreamReader {
-    private static BinfElement ReadMFreeItem(DataInputStream dis, boolean reverse) throws IOException
+    public static BinfElement ReadMFreeItem(DataInputStream dis) throws IOException
     {
         BinfElement element = new BinfElement();
         //READ FUNCTION CODE
@@ -53,15 +56,22 @@ public class StreamReader {
         {
             switch(element.types[i]) {
                 case BinfElement.TCODE_PTR:
-                    T_Ptr pointer = readPtr(dis, reverse);
+                    T_Ptr pointer = readPtr(dis, false);
                     bytes_buffer = ptrToBytes(pointer);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
                     break;
                 case BinfElement.TCODE_SIZE_T:
-                    T_Size_t size = readSize_t(dis, reverse);
+                    T_Size_t size = readSize_t(dis, false);
                     bytes_buffer = size_tToBytes(size);
+                    System.arraycopy(bytes_buffer, 0,
+                            element.data, offset, bytes_buffer.length);
+                    offset += bytes_buffer.length;
+                    break;
+                case BinfElement.TCODE_LONG:
+                    T_Long value = readLong(dis, false);
+                    bytes_buffer = longToBytes(value);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;

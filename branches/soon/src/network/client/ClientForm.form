@@ -28,24 +28,43 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" attributes="0">
-              <EmptySpace min="-2" pref="12" max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                  <Component id="jTextFieldPathApp" min="-2" pref="376" max="-2" attributes="0"/>
-                  <Group type="102" alignment="1" attributes="0">
+              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                  <Group type="102" attributes="0">
+                      <EmptySpace min="-2" pref="12" max="-2" attributes="0"/>
                       <Component id="jButtonDisconnect" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="32767" attributes="0"/>
+                      <EmptySpace min="-2" pref="178" max="-2" attributes="0"/>
                       <Component id="jButtonAnalyze" min="-2" max="-2" attributes="0"/>
                   </Group>
+                  <Group type="102" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="jLabelPinPort" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabelPathApp" alignment="0" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="jTextFieldPathApp" alignment="1" max="32767" attributes="0"/>
+                          <Component id="jTextFieldPinPort" min="-2" pref="94" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
               </Group>
-              <EmptySpace max="-2" attributes="0"/>
+              <EmptySpace min="-2" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="1" attributes="0">
-              <EmptySpace pref="217" max="32767" attributes="0"/>
-              <Component id="jTextFieldPathApp" min="-2" pref="30" max="-2" attributes="0"/>
+              <EmptySpace pref="175" max="32767" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="jTextFieldPinPort" alignment="3" min="-2" pref="30" max="-2" attributes="0"/>
+                  <Component id="jLabelPinPort" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="jTextFieldPathApp" alignment="3" min="-2" pref="30" max="-2" attributes="0"/>
+                  <Component id="jLabelPathApp" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="jButtonAnalyze" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -67,7 +86,7 @@
     </Component>
     <Component class="javax.swing.JTextField" name="jTextFieldPathApp">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Path to application on the remote computer..."/>
+        <Property name="text" type="java.lang.String" value="/home/master/ForTest/memfree"/>
         <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="null"/>
         </Property>
@@ -83,6 +102,28 @@
       <Events>
         <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="jButtonDisconnectMouseClicked"/>
       </Events>
+    </Component>
+    <Component class="javax.swing.JTextField" name="jTextFieldPinPort">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="4"/>
+        <Property name="text" type="java.lang.String" value="40028"/>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="null"/>
+        </Property>
+        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="null"/>
+        </Property>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="jLabelPinPort">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Pin port:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="jLabelPathApp">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Path to app"/>
+      </Properties>
     </Component>
   </SubComponents>
 </Form>

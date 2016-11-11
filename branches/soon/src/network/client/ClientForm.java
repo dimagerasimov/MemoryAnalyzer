@@ -10,8 +10,6 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import memoryanalyzer.MainForm;
 
 /**
@@ -48,6 +46,18 @@ public class ClientForm extends javax.swing.JFrame {
     public String getPathToApp() {
         return jTextFieldPathApp.getText();
     }
+    
+    public int getPinPort() {
+        int pin_port; 
+        try {
+            pin_port = Integer.valueOf(jTextFieldPinPort.getText());
+        } catch(Exception ex) {
+            pin_port = 40028;
+            jTextFieldPinPort.setText(String.valueOf(pin_port));
+        }
+        return pin_port;
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -60,6 +70,9 @@ public class ClientForm extends javax.swing.JFrame {
         jButtonAnalyze = new javax.swing.JButton();
         jTextFieldPathApp = new javax.swing.JTextField();
         jButtonDisconnect = new javax.swing.JButton();
+        jTextFieldPinPort = new javax.swing.JTextField();
+        jLabelPinPort = new javax.swing.JLabel();
+        jLabelPathApp = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("MemoryAnalyzer (client)");
@@ -76,7 +89,7 @@ public class ClientForm extends javax.swing.JFrame {
             }
         });
 
-        jTextFieldPathApp.setText("Path to application on the remote computer...");
+        jTextFieldPathApp.setText("/home/master/ForTest/memfree");
         jTextFieldPathApp.setMaximumSize(null);
         jTextFieldPathApp.setMinimumSize(null);
 
@@ -87,25 +100,48 @@ public class ClientForm extends javax.swing.JFrame {
             }
         });
 
+        jTextFieldPinPort.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
+        jTextFieldPinPort.setText("40028");
+        jTextFieldPinPort.setMaximumSize(null);
+        jTextFieldPinPort.setMinimumSize(null);
+
+        jLabelPinPort.setText("Pin port:");
+
+        jLabelPathApp.setText("Path to app");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(12, 12, 12)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addComponent(jTextFieldPathApp, javax.swing.GroupLayout.PREFERRED_SIZE, 376, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(layout.createSequentialGroup()
+                        .addGap(12, 12, 12)
                         .addComponent(jButtonDisconnect)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jButtonAnalyze)))
+                        .addGap(178, 178, 178)
+                        .addComponent(jButtonAnalyze))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabelPinPort)
+                            .addComponent(jLabelPathApp))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jTextFieldPathApp, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldPinPort, javax.swing.GroupLayout.PREFERRED_SIZE, 94, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(217, Short.MAX_VALUE)
-                .addComponent(jTextFieldPathApp, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(175, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldPinPort, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabelPinPort))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldPathApp, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabelPathApp))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButtonAnalyze)
@@ -140,19 +176,19 @@ public class ClientForm extends javax.swing.JFrame {
                 || (clientThread.getState() == Thread.State.TERMINATED)) {
             try {    
                 clientThread = new ClientManagerThread(this, clientSocket);
+                clientThread.start();
             } catch (IOException ex) {
                 new MsgBox(this, "Error!",
                     "Connection with remote computer is lost!",
                             MsgBox.ACTION_CLOSE).setVisible(true);
             }
-            clientThread.start();
         }
     }//GEN-LAST:event_jButtonAnalyzeMouseClicked
 
     private void jButtonDisconnectMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonDisconnectMouseClicked
         ClientManager.ClientManagerError bufferError = new ClientManager.ClientManagerError();
         try {
-            new ClientManager(clientSocket, bufferError).CloseConnection();
+            new ClientManager(clientSocket, 0, bufferError).CloseConnection();
             new MsgBox(this, "Error!", bufferError.message,
                 MsgBox.ACTION_CLOSE).setVisible(true);
         } catch (IOException ex) {
@@ -169,6 +205,9 @@ public class ClientForm extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonAnalyze;
     private javax.swing.JButton jButtonDisconnect;
+    private javax.swing.JLabel jLabelPathApp;
+    private javax.swing.JLabel jLabelPinPort;
     private javax.swing.JTextField jTextFieldPathApp;
+    private javax.swing.JTextField jTextFieldPinPort;
     // End of variables declaration//GEN-END:variables
 }
