@@ -10,6 +10,12 @@ package crossplatform;
  * @author master
  */
 public class Help {
+    // Common constants
+    public static final String LOOPBACK = "127.0.0.1";
+    public static final int MIN_PORT = 1024;
+    public static final int MAX_PORT = 65536;
+    public static final int MSEC_IN_SEC = 1000;
+    
     //Memory constants
     public static final int WIN_MB = 1<<20;//2^20
     public static final int LINUX_MB = 1000000;
@@ -70,7 +76,7 @@ public class Help {
         return ".out";
     }
     public static String GetStdoutFileExtension() {
-        return ".stout";
+        return ".stdout";
     }
     public static String GetTooltipEditVarPATH() {
         String myOS = GetOS();
@@ -90,5 +96,31 @@ public class Help {
                 tooltip += ".";
         }
         return tooltip;
+    }
+    public static boolean IsValidPort(int port) {
+        if(port < 1024 || port >= 65536) {
+            return false;
+        }
+        return true;
+    }
+    public static boolean IsValidIP(String ip) {
+        String[] components = ip.split("\\.");
+        if(components.length != 4) {
+            return false;
+        }
+        else {
+            try {
+                int tmp;
+                for (String item : components) {
+                    tmp = Integer.valueOf(item);
+                    if(tmp < 0 || tmp > 255) {
+                        return false;
+                    }
+                }
+            } catch(Exception ex) {
+                return false;
+            }
+        }
+        return true;
     }
 }

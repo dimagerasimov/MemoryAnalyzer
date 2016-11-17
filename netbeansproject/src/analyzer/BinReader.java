@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package local;
+package analyzer;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -13,7 +13,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.util.ArrayList;
-import org.jfree.data.xy.TableXYDataset;
 import bintypes.BinfElement;
 import bintypes.T_Long;
 import bintypes.T_Ptr;
@@ -21,7 +20,6 @@ import bintypes.T_Size_t;
 import static bintypes.T_Ptr.ptrToBytes;
 import static bintypes.T_Long.longToBytes;
 import static bintypes.T_Size_t.size_tToBytes;
-import static local.BinAnalyzer.GetAnalyzeMFree;
 import static bintypes.T_Ptr.readPtr;
 import static bintypes.T_Size_t.readSize_t;
 import static bintypes.T_Long.readLong;
@@ -113,7 +111,8 @@ public class BinReader {
         }
         return element;
     }
-    public static TableXYDataset ReadMFreeBinFile(String pathBinFile) throws IOException
+    public static ArrayList<BinfElement> ReadMFreeBinFile(String pathBinFile,
+            ArrayList<BinfElement> binfArray) throws IOException
     {  
         // If little endian then reverse byte order, because JRE works big endian
         boolean reverse
@@ -140,7 +139,7 @@ public class BinReader {
             { throw new IOException("File content can't be showed.\n"
                     + "May be used not special pin-tool."); }
         //Read size (length) of section
-        T_Size_t sizeOfSection = readSize_t(dis, reverse);
+        T_Size_t sizeOfSection = readSize_t(dis, reverse);        
         if(dis.available() < sizeOfSection.getValue()) {
             throw new IOException("The binary file was written wrong!");
         }
@@ -152,15 +151,11 @@ public class BinReader {
         
         int file_offset = 0;
         BinfElement tmpBinfElement;
-        ArrayList<BinfElement> binfArray = new ArrayList();
         while(file_offset < content.length) {
             tmpBinfElement = ReadMFreeItem(content, file_offset, reverse);
             binfArray.add(tmpBinfElement);
             file_offset += tmpBinfElement.GetSize();
         }
-        TableXYDataset xyDataset = GetAnalyzeMFree(binfArray);
-        binfArray.clear();
-        
-        return xyDataset;
+        return binfArray;
     }
 }

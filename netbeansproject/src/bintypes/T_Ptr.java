@@ -5,13 +5,13 @@
  */
 package bintypes;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import static crossplatform.Help.GetArchitecture;
 import static crossplatform.Convert.BytesToInt32;
 import static crossplatform.Convert.BytesToInt64;
 import static crossplatform.Convert.Int32ToBytes;
 import static crossplatform.Convert.Int64ToBytes;
-import java.io.DataInputStream;
-import java.io.IOException;
 
 /**
  *

@@ -5,10 +5,10 @@
  */
 package bintypes;
 
-import static crossplatform.Convert.BytesToInt64;
-import static crossplatform.Convert.Int64ToBytes;
 import java.io.DataInputStream;
 import java.io.IOException;
+import static crossplatform.Convert.BytesToInt64;
+import static crossplatform.Convert.Int64ToBytes;
 
 /**
  *

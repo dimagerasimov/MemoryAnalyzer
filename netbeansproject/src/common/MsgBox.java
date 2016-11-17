@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package memoryanalyzer;
+package common;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
@@ -26,6 +26,11 @@ public class MsgBox extends javax.swing.JFrame {
         this.retJFrame =  retJFrame;
         //Remember action key
         this.key_action = KEY_ACTION;
+        switch(KEY_ACTION) {
+            case ACTION_CLOSE: {
+                jButtonOk.setText("Close");
+            }
+        }
         //If frame feedback was enabled then code below changes state
         if(!retJFrame.isEnabled()) {
             lock = false;
@@ -34,6 +39,9 @@ public class MsgBox extends javax.swing.JFrame {
             lock = true;
             retJFrame.setEnabled(false);
         }
+        // Remember action on close
+        this.action_on_close = retJFrame.getDefaultCloseOperation();
+        // Set my action
         retJFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         //Remember size of label
         heightOfLabelMessage = jLabelMessage.getHeight();
@@ -66,7 +74,6 @@ public class MsgBox extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setAlwaysOnTop(true);
-        setMaximumSize(new java.awt.Dimension(300, 500));
         setMinimumSize(new java.awt.Dimension(300, 100));
         setResizable(false);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -135,13 +142,12 @@ public class MsgBox extends javax.swing.JFrame {
                 if(lock) {
                     retJFrame.setEnabled(true);
                 }
-                retJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                retJFrame.setDefaultCloseOperation(action_on_close);
                 break;
         }
     }//GEN-LAST:event_formWindowClosed
 
     private void jButtonOkMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonOkMouseClicked
-        // TODO add your handling code here:
         this.setVisible(false);
         this.dispose();
     }//GEN-LAST:event_jButtonOkMouseClicked
@@ -157,6 +163,7 @@ public class MsgBox extends javax.swing.JFrame {
     private final JFrame retJFrame;
     private final int key_action;
     private final boolean lock;
+    private final int action_on_close;
     private int heightOfLabelMessage;
     
     // Variables declaration - do not modify//GEN-BEGIN:variables

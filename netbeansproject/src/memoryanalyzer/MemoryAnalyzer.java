@@ -15,7 +15,7 @@ public class MemoryAnalyzer {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        /* Create and display the form */
+        // TODO code application logic here
        java.awt.EventQueue.invokeLater(new Runnable() { 
             @Override
             public void run() {

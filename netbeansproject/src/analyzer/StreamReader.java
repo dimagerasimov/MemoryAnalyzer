@@ -3,24 +3,32 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package network;
+package analyzer;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import bintypes.BinfElement;
+import bintypes.T_Long;
 import bintypes.T_Ptr;
 import bintypes.T_Size_t;
-import static bintypes.T_Ptr.ptrToBytes;
+import static bintypes.T_Long.readLong;
 import static bintypes.T_Size_t.readSize_t;
-import static bintypes.T_Size_t.size_tToBytes;
 import static bintypes.T_Ptr.readPtr;
+import static bintypes.T_Long.longToBytes;
+import static bintypes.T_Ptr.ptrToBytes;
+import static bintypes.T_Size_t.size_tToBytes;
 
 /**
  *
  * @author master
  */
 public class StreamReader {
-    private static BinfElement ReadMFreeItem(DataInputStream dis, boolean reverse) throws IOException
+    // Codes to begin / end session
+    private static final byte BEGIN_SESSION = (byte) 254;
+    private static final byte END_SESSION = (byte) 255;
+    
+    public static BinfElement ReadMFreeItem(DataInputStream dis) throws IOException
     {
         BinfElement element = new BinfElement();
         //READ FUNCTION CODE
@@ -53,15 +61,22 @@ public class StreamReader {
         {
             switch(element.types[i]) {
                 case BinfElement.TCODE_PTR:
-                    T_Ptr pointer = readPtr(dis, reverse);
+                    T_Ptr pointer = readPtr(dis, false);
                     bytes_buffer = ptrToBytes(pointer);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
                     break;
                 case BinfElement.TCODE_SIZE_T:
-                    T_Size_t size = readSize_t(dis, reverse);
+                    T_Size_t size = readSize_t(dis, false);
                     bytes_buffer = size_tToBytes(size);
+                    System.arraycopy(bytes_buffer, 0,
+                            element.data, offset, bytes_buffer.length);
+                    offset += bytes_buffer.length;
+                    break;
+                case BinfElement.TCODE_LONG:
+                    T_Long value = readLong(dis, false);
+                    bytes_buffer = longToBytes(value);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
@@ -71,5 +86,30 @@ public class StreamReader {
             }              
         }
         return element;
+    }
+    public static void ReadInputStream(DataInputStream dis,
+            ArrayList<BinfElement> binfArray) throws IOException {
+        byte rByte;
+        if(dis.available() >= Byte.BYTES) {
+            rByte = dis.readByte();
+            if(rByte != BEGIN_SESSION) {
+                throw new IOException("Error in begin connection!");
+            }
+        }
+
+        while(true) {
+            if(dis.available() == Byte.BYTES) {
+                rByte = dis.readByte();
+                if(rByte == END_SESSION) {
+                    break;
+                }
+            } else if(dis.available() != 0) {
+                BinfElement binfElement = StreamReader.ReadMFreeItem(dis);
+                if(binfElement == null) {
+                    throw new IOException("Indalid data!");
+                }
+                binfArray.add(binfElement);
+            }
+        }
     }
 }

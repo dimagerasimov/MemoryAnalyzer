@@ -3,19 +3,20 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package memoryanalyzer;
+package common;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
-import memoryanalyzer.WaitBoxThread.WaitBoxFeedback;
+import common.WaitBoxThread.WaitBoxFeedback;
 
 /**
  *
  * @author master
  */
 public class WaitBox extends javax.swing.JFrame {
-    public WaitBox() {
+    public WaitBox(String tooltip) {
         initComponents();
+        jLabelState.setText(tooltip);
         setCenterPosition();
     }
     
@@ -40,9 +41,6 @@ public class WaitBox extends javax.swing.JFrame {
             // Create and run a thread WaitBoxThread
             WaitBoxThread waitBoxThread = new WaitBoxThread(this, waitBoxFeedback, thread_new);
             waitBoxThread.start();
-
-            // Disabled feedback with main form
-            //retJFrame.setEnabled(false);
             //Run thread_new
             this.thread_new = thread_new;
             thread_new.start();
@@ -75,9 +73,7 @@ public class WaitBox extends javax.swing.JFrame {
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Waiting");
         setCursor(new java.awt.Cursor(java.awt.Cursor.WAIT_CURSOR));
-        setMaximumSize(new java.awt.Dimension(320, 70));
         setMinimumSize(new java.awt.Dimension(320, 70));
-        setPreferredSize(new java.awt.Dimension(320, 70));
         setResizable(false);
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent evt) {
@@ -89,7 +85,7 @@ public class WaitBox extends javax.swing.JFrame {
         jProgressBar.setMinimumSize(new java.awt.Dimension(290, 20));
         jProgressBar.setPreferredSize(new java.awt.Dimension(290, 20));
 
-        jLabelState.setText("Capture info...");
+        jLabelState.setText("Action");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
