@@ -18,8 +18,6 @@ import common.WaitBox;
 import crossplatform.Help;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import memoryanalyzer.FormConnectTo.ConnectToFeedback;
 import network.PinClient;
 import network.ConnectThread;
@@ -72,7 +70,6 @@ public class MainForm extends javax.swing.JFrame {
     private void initResultsChooser() {
         String binaryFileExtension = Help.GetBinaryFileExtension();
         resultsChooser = new JFileChooser();
-        resultsChooser.setDialogTitle("Open Results...");
         resultsChooser.setMultiSelectionEnabled(false);
         FileNameExtensionFilter filterNameExtension;
         filterNameExtension = new FileNameExtensionFilter("Binary output (*"
@@ -292,6 +289,7 @@ public class MainForm extends javax.swing.JFrame {
     }//GEN-LAST:event_jMenuItemExitActionPerformed
 
     private void jMenuItemOpenResultsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemOpenResultsActionPerformed
+        resultsChooser.setDialogTitle("Open Results...");
         int ret = resultsChooser.showOpenDialog(this);
         if(ret != JFileChooser.APPROVE_OPTION) {
             return;
@@ -329,11 +327,12 @@ public class MainForm extends javax.swing.JFrame {
     }//GEN-LAST:event_formWindowClosed
 
     private void jMenuItemSaveBinFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveBinFileActionPerformed
-        if(tmpResultsFileName == null) {
+        if(tmpResultsFileName == null || !Files.exists(Paths.get(tmpResultsFileName))) {
             new MsgBox(this, "Notice", "No data to save!",
                 MsgBox.ACTION_OK).setVisible(true);
             return;
         }
+        resultsChooser.setDialogTitle("Save Results...");
         int ret = resultsChooser.showSaveDialog(this);
         if(ret != JFileChooser.APPROVE_OPTION) {
             return;
@@ -341,6 +340,8 @@ public class MainForm extends javax.swing.JFrame {
         File resultsFile = resultsChooser.getSelectedFile();
         if(resultsFile != null) {
             try {
+                //String 
+                Files.deleteIfExists(Paths.get(resultsFile.getAbsolutePath()));
                 Files.move(Paths.get(tmpResultsFileName), Paths.get(resultsFile.getAbsolutePath()));
                 tmpResultsFileName = null;
             } catch (IOException ex) {

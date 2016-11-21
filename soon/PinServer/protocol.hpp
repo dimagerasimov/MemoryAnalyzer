@@ -36,7 +36,10 @@ typedef unsigned char byte;
 #define PIN_EXEC "p_ex"
 #define GET_BINARY "gbin"
 
-void reverseBytes(byte* arr, int size);
+bool isBigEndian();
+bool isLittleEndian();
+void hton(byte* arr, int size);
+void ntoh(byte* arr, int size);
 
 #endif /* PROTOCOL_HPP */
 

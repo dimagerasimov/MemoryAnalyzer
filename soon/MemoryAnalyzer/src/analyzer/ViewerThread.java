@@ -30,12 +30,12 @@ public class ViewerThread extends Thread {
         feedback.setEnabled(false);
         try {
             readerThread.start();
-            Thread.sleep(10);
+            Thread.sleep(200);
             while(!readerThread.isInterrupted() &&
                 readerThread.getState() != Thread.State.TERMINATED) {            
                 TableXYDataset xyDataset = BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData());
                 feedback.updateChart(ChartManager.GetNewChart(xyDataset));
-                //Thread.sleep(1000);
+                Thread.sleep(1000);
             }
             if(readerThread.isFinishSuccessfully()) {
                 feedback.updateChart(ChartManager.GetNewChart(

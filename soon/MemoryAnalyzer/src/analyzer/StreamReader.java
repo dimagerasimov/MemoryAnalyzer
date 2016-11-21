@@ -61,21 +61,21 @@ public class StreamReader {
         {
             switch(element.types[i]) {
                 case BinfElement.TCODE_PTR:
-                    T_Ptr pointer = readPtr(dis, false);
+                    T_Ptr pointer = readPtr(dis);
                     bytes_buffer = ptrToBytes(pointer);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
                     break;
                 case BinfElement.TCODE_SIZE_T:
-                    T_Size_t size = readSize_t(dis, false);
+                    T_Size_t size = readSize_t(dis);
                     bytes_buffer = size_tToBytes(size);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);
                     offset += bytes_buffer.length;
                     break;
                 case BinfElement.TCODE_LONG:
-                    T_Long value = readLong(dis, false);
+                    T_Long value = readLong(dis);
                     bytes_buffer = longToBytes(value);
                     System.arraycopy(bytes_buffer, 0,
                             element.data, offset, bytes_buffer.length);

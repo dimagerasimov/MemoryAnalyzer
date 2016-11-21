@@ -30,7 +30,7 @@ public class ConnectThread extends Thread {
         this.pinClient = pinClient;
     }
     
-    public void saveBinaryFile(DataInputStream dis) throws IOException {
+    public void readBinaryFile(DataInputStream dis) throws IOException {
         int size = dis.readInt();
         byte[] binary = new byte[size];
         dis.read(binary, 0, size);
@@ -120,7 +120,7 @@ public class ConnectThread extends Thread {
             }
             // Save results in tmp folder
             try {
-                saveBinaryFile(dis);
+                readBinaryFile(dis);
             } catch(IOException ex) {
                 dos.writeUTF(Protocol.BYE);
                 clientSocket.close();
@@ -130,14 +130,6 @@ public class ConnectThread extends Thread {
                 return;
             }
             
-            if(dis.readUTF().equals(Protocol.ERROR)) {
-                dos.writeUTF(Protocol.BYE);
-                clientSocket.close();
-                new MsgBox(parent, "Error!", "Internal error on the server (ip=\""
-                        + connectTo.ip + "\", port=\"" + String.valueOf(connectTo.port) + "\").",
-                        MsgBox.ACTION_OK).setVisible(true);
-                return;
-            }
             dos.writeUTF(Protocol.BYE);
             clientSocket.close();
             

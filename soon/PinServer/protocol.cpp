@@ -6,7 +6,32 @@
 
 #include "protocol.hpp"
 
-void reverseBytes(byte* arr, int size) {
+bool isBigEndian() {
+    int value = 0;
+    ((char*)&value)[0] = 1;
+    return value != 1;
+}
+bool isLittleEndian() {
+    int value = 0;
+    ((char*)&value)[0] = 1;
+    return value == 1;
+}
+void hton(byte* arr, int size) {
+    if(isBigEndian()) {
+        return;
+    }
+    byte tmp;
+    int half_size = size / 2;
+    for(int i = 0; i < half_size; i++) {
+        tmp = arr[i];
+        arr[i] = arr[size - i - 1];
+        arr[size - i - 1] = tmp;
+    }
+}
+void ntoh(byte* arr, int size) {
+    if(isBigEndian()) {
+        return;
+    }
     byte tmp;
     int half_size = size / 2;
     for(int i = 0; i < half_size; i++) {

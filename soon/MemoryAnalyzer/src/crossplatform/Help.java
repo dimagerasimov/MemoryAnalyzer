@@ -26,9 +26,6 @@ public class Help {
     public static String GetOS() {
         return System.getProperty("os.name");
     }
-    public static String GetArchitecture() {
-        return System.getProperty("os.arch");
-    }
     public static int GetNumBytesInMb() {
         String myOS = GetOS();
         if(myOS == null)

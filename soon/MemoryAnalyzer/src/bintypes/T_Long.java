@@ -25,8 +25,7 @@ public class T_Long {
         return value_long;
     }
     public T_Long reverseBytes() {
-        T_Long value = new T_Long(Long.reverseBytes(value_long));
-        return value;
+        return new T_Long(Long.reverseBytes(value_long));
     }
     public static int getSize() {
         return Long.BYTES;
@@ -37,25 +36,13 @@ public class T_Long {
     public static byte[] longToBytes(T_Long value) {
         return Int64ToBytes(value.getValue());
     }
-    public static T_Long readLong(byte[] content, int offset,
-            boolean reverse) throws IOException {
-        T_Long value;
-        byte[] buffer;
-        buffer = new byte[Long.BYTES];
+    public static T_Long readLong(byte[] content, int offset) throws IOException {
+        byte[] buffer = new byte[Long.BYTES];
         System.arraycopy(content, offset, buffer, 0, Long.BYTES);
-        value = bytesToLong(buffer);
-        if(reverse) {
-            value = value.reverseBytes();
-        }
-        return value;
+        return bytesToLong(buffer);
     }
-    public static T_Long readLong(DataInputStream dis,
-            boolean reverse) throws IOException {
-        T_Long value = new T_Long(dis.readLong());
-        if(reverse) {
-            value = value.reverseBytes();
-        }
-        return value;
+    public static T_Long readLong(DataInputStream dis) throws IOException {
+        return new T_Long(dis.readLong());
     }
     
     // Private variables

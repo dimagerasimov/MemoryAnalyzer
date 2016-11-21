@@ -156,7 +156,7 @@ byte* PinLoader :: getBinary() {
     size = nsize = ftell(tmp_file);
     byte* binary = new byte[sizeof(int) + size];
     // Host byte order to network byte order
-    reverseBytes((byte*)&nsize, sizeof(int));
+    hton((byte*)&nsize, sizeof(int));
     // Write length
     memcpy(&binary[0], &nsize, sizeof(int));
     // Write other data

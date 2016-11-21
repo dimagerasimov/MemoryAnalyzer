@@ -31,8 +31,9 @@ bool writeUTF(int sock_fd, UTF_text* utf_text) {
     return true;
 }
 bool writeBinFile(int sock_fd, byte* binary) {
-    int real_length = ((int*)binary)[0] + sizeof(int);
-    reverseBytes((byte*)&real_length, sizeof(int));
+    int real_length = ((int*)binary)[0];
+    ntoh((byte*)&real_length, sizeof(int));
+    real_length += sizeof(int);
     int write_length = send(sock_fd, binary, real_length, MSG_NOSIGNAL);
     if(write_length < real_length) {
         return false;
@@ -51,9 +52,10 @@ void* start_routine(void* arg) {
     ThreadParams* threadParams = (ThreadParams*)arg;
     // Count of errors
     lim_error = 0;
-    while(lim_error < 3) {
+    while(1) {
         // Read and parse input command
         if(!readUTF(threadParams->sock_fd, &utf_text)) {
+            client_hung_up(threadParams->sock_fd);
             break;
         }
         parseUTFtext_command(&utf_text, command, text_command);
@@ -65,6 +67,7 @@ void* start_routine(void* arg) {
         }
         else if(strcmp(command, BYE) == 0)
         {
+            fini_client_notice(threadParams->sock_fd);
             break;
         }
         else if(strcmp(command, PIN_INIT) == 0)
@@ -109,13 +112,16 @@ void* start_routine(void* arg) {
                     utf_text.setText(SUCCESS, strlen(SUCCESS));
                     if(!writeUTF(threadParams->sock_fd, &utf_text)) {
                         delete[] binary;
+                        client_hung_up(threadParams->sock_fd);
                         break;
                     }
                     if(!writeBinFile(threadParams->sock_fd, binary)) {
                         delete[] binary;
+                        client_hung_up(threadParams->sock_fd);
                         break;
                     }
                     delete[] binary;
+                    continue;
                 }
             }
         }
@@ -131,12 +137,16 @@ void* start_routine(void* arg) {
         }
         
         if(!writeUTF(threadParams->sock_fd, &utf_text)) {
+            client_hung_up(threadParams->sock_fd);
+            break;
+        }
+        if(lim_error >= 3) {
+            connection_reset(threadParams->sock_fd);
             break;
         }
     }
     pinLoader.pinKill();
     close(threadParams->sock_fd);
-    fini_client_notice(threadParams->sock_fd);
     
     delete threadParams;
     return NULL;
