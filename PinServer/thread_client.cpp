@@ -10,11 +10,11 @@
 #include <unistd.h>
 
 #include "thread_client.hpp"
-#include "notice_manager.hpp"
 #include "pin_loader.hpp"
 
 bool readUTF(int sock_fd, UTF_text* utf_text) {
-    int read_length = read(sock_fd, utf_text->getContent(), MAX_MESSAGE_LENGTH);
+    int read_length = recv(sock_fd, utf_text->getContent(),
+            MAX_MESSAGE_LENGTH, MSG_NOSIGNAL);
     if(read_length <= 2) {
         return false;
     }
@@ -22,14 +22,25 @@ bool readUTF(int sock_fd, UTF_text* utf_text) {
     return true;
 }
 bool writeUTF(int sock_fd, UTF_text* utf_text) {
-    int write_length = write(sock_fd, utf_text->getContent(),
-            utf_text->getLength() + sizeof(short int));
+    int write_length = send(sock_fd, utf_text->getContent(),
+            utf_text->getLength() + sizeof(short int), MSG_NOSIGNAL);
     if(write_length <= utf_text->getLength()) {
         return false;
     }
     return true;
 }
+bool writeBinFile(int sock_fd, byte* binary) {
+    int real_length = ((int*)binary)[0];
+    ntoh((byte*)&real_length, sizeof(int));
+    real_length += sizeof(int);
+    int write_length = send(sock_fd, binary, real_length, MSG_NOSIGNAL);
+    if(write_length < real_length) {
+        return false;
+    }
+    return true;
+}
 void* start_routine(void* arg) {
+    int lim_error;
     bool parse_result;
     UTF_text utf_text;
     char command[MAX_COMMAND_LENGTH];
@@ -38,34 +49,49 @@ void* start_routine(void* arg) {
 
     PinLoader pinLoader;
     ThreadParams* threadParams = (ThreadParams*)arg;
-    while(true) {
+    // Count of errors
+    lim_error = 0;
+    while(1) {
+        // Read and parse input command
         if(!readUTF(threadParams->sock_fd, &utf_text)) {
+            print_notice(CLIENT_HUNG_UP, &threadParams->sock_fd);
             break;
         }
         parseUTFtext_command(&utf_text, command, text_command);
 
+        // Recognize input command
         if(strcmp(command, HI) == 0)
         {
             utf_text.setText(HI, strlen(HI));
         }
         else if(strcmp(command, BYE) == 0)
         {
+            print_notice(FINI_CLIENT_NOTICE, &threadParams->sock_fd);
             break;
         }
         else if(strcmp(command, PIN_INIT) == 0)
         {
-            parse_result = parse_get_argument(text_command, text_arg, 0);
+            parse_result &= parse_get_argument(
+                    text_command, text_arg, 0, ARGS_DELIMITER);
+            pinLoader.setPort(text_arg);   
+            parse_result = parse_get_argument(
+                    text_command, text_arg, 1, ARGS_DELIMITER);
             pinLoader.setPathToApp(text_arg);
-            parse_result &= parse_get_argument(text_command, text_arg, 1);
-            pinLoader.setPort(text_arg);
-            if(!parse_result) {
-                break;
-            }
+            parse_result = parse_get_argument(
+                    text_command, text_arg, 2, ARGS_DELIMITER);
+            pinLoader.setArgsForApp(text_arg);
             
-            if(!pinLoader.isReady()) {
+            pinLoader.setKey(threadParams->sock_fd);
+            
+            if(!parse_result) {
                 utf_text.setText(ERROR, strlen(ERROR));
-            } else {
-                utf_text.setText(SUCCESS, strlen(SUCCESS));
+            }
+            else {
+                if(!pinLoader.isPinReady()) {
+                    utf_text.setText(ERROR, strlen(ERROR));
+                } else {
+                    utf_text.setText(SUCCESS, strlen(SUCCESS));
+                }
             }
         }
         else if(strcmp(command, PIN_EXEC) == 0)
@@ -79,18 +105,52 @@ void* start_routine(void* arg) {
                 utf_text.setText(SUCCESS, strlen(SUCCESS));
             }
         }
+        else if(strcmp(command, GET_BINARY) == 0) {
+            if(!pinLoader.pinBlockWait()) {
+                utf_text.setText(ERROR, strlen(ERROR));
+            } else {
+                byte* binary = pinLoader.getBinary();
+                if(binary == NULL) {
+                    utf_text.setText(ERROR, strlen(ERROR));
+                } else {
+                    utf_text.setText(SUCCESS, strlen(SUCCESS));
+                    if(!writeUTF(threadParams->sock_fd, &utf_text)) {
+                        delete[] binary;
+                        print_notice(CLIENT_HUNG_UP, &threadParams->sock_fd);
+                        break;
+                    }
+                    if(!writeBinFile(threadParams->sock_fd, binary)) {
+                        delete[] binary;
+                        print_notice(CLIENT_HUNG_UP, &threadParams->sock_fd);
+                        break;
+                    }
+                    delete[] binary;
+                    continue;
+                }
+            }
+        }
         else
         {
             utf_text.setText(ERROR, strlen(ERROR));
         }
         
+        // If client makes mistake then increase count of error
+        parseUTFtext_command(&utf_text, command, text_command);
+        if(strcmp(command, ERROR) == 0) {
+            lim_error++;
+        }
+        
         if(!writeUTF(threadParams->sock_fd, &utf_text)) {
+            print_notice(CLIENT_HUNG_UP, &threadParams->sock_fd);
+            break;
+        }
+        if(lim_error >= 3) {
+            print_notice(CONNECTION_RESET, &threadParams->sock_fd);
             break;
         }
     }
-    pinLoader.pinWait();
+    pinLoader.pinKill();
     close(threadParams->sock_fd);
-    fini_client_notice(threadParams->sock_fd);
     
     delete threadParams;
     return NULL;

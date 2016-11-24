@@ -24,6 +24,7 @@
       <itemPath>notice_manager.cpp</itemPath>
       <itemPath>parser_protocol.cpp</itemPath>
       <itemPath>pin_loader.cpp</itemPath>
+      <itemPath>protocol.cpp</itemPath>
       <itemPath>thread_client.cpp</itemPath>
       <itemPath>utf_text.cpp</itemPath>
     </logicalFolder>
@@ -69,6 +70,8 @@
       <item path="pin_loader.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="pin_loader.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="protocol.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="protocol.hpp" ex="false" tool="3" flavor2="0">
       </item>
@@ -121,6 +124,8 @@
       <item path="pin_loader.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="pin_loader.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="protocol.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="protocol.hpp" ex="false" tool="3" flavor2="0">
       </item>

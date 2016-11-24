@@ -9,11 +9,16 @@
 MapClients :: MapClients() {
 }
 bool MapClients :: addClient(int new_client_fds) {
-    if(map_clients.size() >= MAX_NUMBER_CLIENTS) {
-        return false;
-    }
     pair<map<int, int>::iterator, bool> ret;
-    ret = map_clients.insert(pair<int,int>(new_client_fds, new_client_fds));
+    if(map_clients.size() < MAX_NUMBER_CLIENTS) {
+        ret = map_clients.insert(pair<int,int>(new_client_fds, new_client_fds));
+    }
+    else {
+        if(map_clients.find(new_client_fds)->second != new_client_fds) {
+            return false;
+        }
+        ret = map_clients.insert(pair<int,int>(new_client_fds, new_client_fds));
+    }
     return true;
 }
 MapClients :: ~MapClients() {

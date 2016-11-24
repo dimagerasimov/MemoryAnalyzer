@@ -14,7 +14,7 @@
 #ifndef UTF_TEXT_HPP
 #define UTF_TEXT_HPP
 
-typedef unsigned char byte;
+#include "protocol.hpp"
 
 #define UTF_TEXT_LENGTH 1<<16
 

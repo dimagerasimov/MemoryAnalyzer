@@ -26,9 +26,6 @@ public class Help {
     public static String GetOS() {
         return System.getProperty("os.name");
     }
-    public static String GetArchitecture() {
-        return System.getProperty("os.arch");
-    }
     public static int GetNumBytesInMb() {
         String myOS = GetOS();
         if(myOS == null)
@@ -75,6 +72,22 @@ public class Help {
     public static String GetBinaryFileExtension() {
         return ".out";
     }
+    public static String GetTmpFolderPath() {
+        return System.getProperty("user.dir") + "/temp";
+    }
+    public static int GetDefaultPinPort() {
+        return 4028;
+    }
+    public static String GetPinWorkDirPath() {
+        return System.getProperty("user.dir") + "/PinServer";
+    }
+    public static String GetPinServerPath() {
+        return GetPinWorkDirPath() + "/pinserver";
+    }
+    public static String GetBinaryResultsPath() {
+        return GetTmpFolderPath() + "/" + String.valueOf(Math.random()).replace(
+                ".", "").replace(",", "").replace("0", "") + GetBinaryFileExtension();
+    }
     public static String GetStdoutFileExtension() {
         return ".stdout";
     }
@@ -98,10 +111,7 @@ public class Help {
         return tooltip;
     }
     public static boolean IsValidPort(int port) {
-        if(port < 1024 || port >= 65536) {
-            return false;
-        }
-        return true;
+        return (port >= 1024) && (port < 65536);
     }
     public static boolean IsValidIP(String ip) {
         String[] components = ip.split("\\.");

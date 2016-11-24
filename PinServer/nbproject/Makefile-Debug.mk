@@ -40,6 +40,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/notice_manager.o \
 	${OBJECTDIR}/parser_protocol.o \
 	${OBJECTDIR}/pin_loader.o \
+	${OBJECTDIR}/protocol.o \
 	${OBJECTDIR}/thread_client.o \
 	${OBJECTDIR}/utf_text.o
 
@@ -92,6 +93,11 @@ ${OBJECTDIR}/pin_loader.o: pin_loader.cpp
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/pin_loader.o pin_loader.cpp
+
+${OBJECTDIR}/protocol.o: protocol.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/protocol.o protocol.cpp
 
 ${OBJECTDIR}/thread_client.o: thread_client.cpp 
 	${MKDIR} -p ${OBJECTDIR}

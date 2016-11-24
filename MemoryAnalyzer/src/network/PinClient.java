@@ -25,6 +25,9 @@ public class PinClient {
     }
     
     public void dispose() {
+        if(pinSocket == null) {
+            return;
+        }
         try {
             pinSocket.close();
         } catch (IOException ex) {
@@ -67,6 +70,10 @@ public class PinClient {
         }
     }
     
+    public int getListenPort() {
+        return pinSocket.getLocalPort();
+    }
+    
     private static ServerSocket getValidServerSocket() {
         ServerSocket pinSocket;
         try {
@@ -80,10 +87,6 @@ public class PinClient {
     private static int getRandomPort() {
         return (int)(Math.round((Help.MAX_PORT - Help.MIN_PORT)
                 * Math.random() + Help.MIN_PORT));
-    }
-
-    public int getListenPort() {
-        return pinSocket.getLocalPort();
     }
     
     // Private variables

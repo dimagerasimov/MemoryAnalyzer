@@ -22,16 +22,14 @@ public class ReaderThread extends Thread {
         this.dis = null;
         binfArray = new ArrayList(Help.WIN_MB);
         isFinishSuccessfully = false;
-    }
-    
+    }   
     public ReaderThread(DataInputStream dis) {
         super();
         this.pathToBinaryFile = null;
         this.dis = dis;
         binfArray = new ArrayList(Help.WIN_MB);
         isFinishSuccessfully = false;
-    }
-    
+    }   
     @Override
     public void run() {
         try {
@@ -41,15 +39,13 @@ public class ReaderThread extends Thread {
                 BinReader.ReadMFreeBinFile(pathToBinaryFile, binfArray);
             }
             isFinishSuccessfully = true;
-        } catch (IOException ex) {
+        } catch (InterruptedException | IOException ex) {
             // DO NOTHING
         }
     }
-    
     public boolean isFinishSuccessfully() {
         return isFinishSuccessfully;
     }
-    
     public ArrayList<BinfElement> GetStreamData() {
         return new ArrayList(binfArray);
     }

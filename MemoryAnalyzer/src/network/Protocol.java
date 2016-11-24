@@ -26,4 +26,5 @@ public class Protocol {
     public final static String BYE = "bye";
     public final static String PIN_INIT = "p_in";
     public final static String PIN_EXEC = "p_ex";
+    public final static String GET_BINARY = "gbin";
 }

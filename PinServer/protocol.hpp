@@ -14,7 +14,9 @@
 #ifndef PROTOCOL_HPP
 #define PROTOCOL_HPP
 
-#define CONNECTION_TIMEOUT 10
+typedef unsigned char byte;
+
+#define CONNECTION_TIMEOUT 15
 
 #define MAX_COMMAND_LENGTH 16
 #define MAX_MESSAGE_LENGTH 256
@@ -32,6 +34,12 @@
 #define BYE "bye"
 #define PIN_INIT "p_in"
 #define PIN_EXEC "p_ex"
-        
+#define GET_BINARY "gbin"
+
+bool isBigEndian();
+bool isLittleEndian();
+void hton(byte* arr, int size);
+void ntoh(byte* arr, int size);
+
 #endif /* PROTOCOL_HPP */
 

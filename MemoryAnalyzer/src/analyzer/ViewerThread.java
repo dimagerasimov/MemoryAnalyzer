@@ -30,7 +30,7 @@ public class ViewerThread extends Thread {
         feedback.setEnabled(false);
         try {
             readerThread.start();
-            Thread.sleep(1500);
+            Thread.sleep(200);
             while(!readerThread.isInterrupted() &&
                 readerThread.getState() != Thread.State.TERMINATED) {            
                 TableXYDataset xyDataset = BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData());

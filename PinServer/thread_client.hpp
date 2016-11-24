@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 
 #include "parser_protocol.hpp"
+#include "notice_manager.hpp"
 
 typedef struct __ThreadParams {
     int sock_fd;

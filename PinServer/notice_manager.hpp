@@ -14,11 +14,16 @@
 #ifndef NOTICE_MANAGER_HPP
 #define NOTICE_MANAGER_HPP
 
-void notice(const char* message);
-void ini_client_notice(bool suc, int sock_fd);
-void fini_client_notice(int sock_fd);
-void bind_notice(short int port);
-void err(const char* message);
+#define BIND_NOTICE 0
+#define NOTICE 1
+#define ERR 2
+#define INI_SUC_CLIENT_NOTICE 3
+#define INI_FAIL_CLIENT_NOTICE 4
+#define FINI_CLIENT_NOTICE 5
+#define CLIENT_HUNG_UP 6
+#define CONNECTION_RESET 7
+
+void print_notice(int type_notice, void* arg);
 
 #endif /* NOTICE_MANAGER_HPP */
 

@@ -20,11 +20,6 @@ public class WaitBox extends javax.swing.JFrame {
         setCenterPosition();
     }
     
-    private void setCenterPosition() {
-        Point p = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
-        this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
-    }
-    
     public void updateProgress() {
         if(waitBoxFeedback != null) {    
             jProgressBar.setValue(waitBoxFeedback.progress);
@@ -54,9 +49,10 @@ public class WaitBox extends javax.swing.JFrame {
         this.dispose();
     }
     
-    // My variables
-    private Thread thread_new;
-    private WaitBoxFeedback waitBoxFeedback;
+    private void setCenterPosition() {
+        Point p = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
+        this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
+    }
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -119,7 +115,11 @@ public class WaitBox extends javax.swing.JFrame {
             thread_new.interrupt();
         }
     }//GEN-LAST:event_formWindowClosed
-
+      
+    // My variables
+    private Thread thread_new;
+    private WaitBoxFeedback waitBoxFeedback;
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabelState;
     private javax.swing.JProgressBar jProgressBar;

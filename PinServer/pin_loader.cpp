@@ -11,15 +11,24 @@
 #include <sys/wait.h>
 
 #include "pin_loader.hpp"
+#include "parser_protocol.hpp"
 
 #define ERR_EXIT_CODE 1234
 
 PinLoader :: PinLoader() {
-    pin_proc = 0;
-    port4Connect = 0;
-    pathToApp[0] = '\0';
+    hardReset();
 }
 PinLoader :: ~PinLoader() {
+    pinKill();
+}
+void PinLoader :: hardReset() {
+    pin_proc = -1;
+    portToConnect = 0;
+    pathToApp[0] = '\0';
+    unique_key_of_file = -1;
+}
+void setTmpFilePath(char buffer[], pid_t pin_proc) {
+    sprintf(buffer, "%s/%d.out", TMP_FOLDER, pin_proc);
 }
 bool PinLoader :: setPathToApp(const char* pathToApp) {
     try {
@@ -29,21 +38,30 @@ bool PinLoader :: setPathToApp(const char* pathToApp) {
         return false;
     }
 }
-bool PinLoader :: setPort(const char* port) {
+bool PinLoader :: setArgsForApp(const char* argsForApp) {
     try {
-        this->port4Connect = atoi(port);
+        strcpy(this->argsForApp, argsForApp);
         return true;
     } catch(...) {
         return false;
     }
 }
-const char* PinLoader :: getPathToApp() {
-    return (const char*)this->pathToApp;
+bool PinLoader :: setPort(const char* port) {
+    try {
+        this->portToConnect = atoi(port);
+        return true;
+    } catch(...) {
+        return false;
+    }
 }
-const int PinLoader :: getPort() {
-    return this->port4Connect;
+bool PinLoader :: setKey(const int unique_key_of_file) {
+    if(unique_key_of_file == -1) {
+        return false;
+    }
+    this->unique_key_of_file = unique_key_of_file;
+    return true;
 }
-bool isPinReady() {
+bool isPinExist() {
     pid_t child_proc = fork();
     if(child_proc == 0) {
         // Close stdout that child will not wrote on the screen
@@ -61,7 +79,7 @@ bool isPinReady() {
     }
     return true;
 }
-bool PinLoader :: isReady() {
+bool PinLoader :: isPinReady() {
     FILE* tmp;
     tmp = fopen(pathToApp, "rb");
     if(tmp == NULL) {
@@ -71,36 +89,77 @@ bool PinLoader :: isReady() {
     if(tmp == NULL) {
         return false;
     }
-    return isPinReady();
+    if(unique_key_of_file == -1) {
+        return false;
+    }
+    return isPinExist();
 }
 bool PinLoader :: pinExec(char* ip) {
+    // Test re-run
+    if(pin_proc != -1) {
+        return false;
+    }
+    // Make fork current process
     pin_proc = fork();
     if(pin_proc == -1) {
         return false;
     }
-    else if(pin_proc == 0) {
-        char port_tmp[16];
-        char ip_tmp[32];
-        sprintf(port_tmp, "port=%d", port4Connect);
-        sprintf(ip_tmp, "ip=%s", ip);
+    else if(pin_proc == 0) {      
         // Close stdout that child will not wrote on the screen
         fclose(stdout);
         // Give to possibility the other party accept my
         // incoming connection and close previous connection
         sleep(3);
-        execlp("pin", "", "-t", PIN_TOOL_PATH, "--", pathToApp,
-                port_tmp, ip_tmp, NULL);
+        // 64 is limit of arguments
+        char** args = new char*[64];
+        args[0] = new char[strlen("") + 1];
+        strcpy(args[0], "");
+        
+        args[1] = new char[strlen("-t") + 1];
+        strcpy(args[1], "-t");
+        
+        args[2] = new char[strlen(PIN_TOOL_PATH) + 1];
+        strcpy(args[2], PIN_TOOL_PATH);
+        
+        args[3] = new char[strlen("-o") + 1];
+        strcpy(args[3], "-o");
+        
+        args[4] = new char[256];
+        setTmpFilePath(args[4], unique_key_of_file);
+       
+        args[5] = new char[strlen("--") + 1];
+        strcpy(args[5], "--");
+        
+        args[6] = new char[256];
+        strcpy(args[6], pathToApp);
+        
+        args[7] = new char[32];
+        sprintf(args[7], "port=%d", portToConnect);
+        
+        args[8] = new char[32];
+        sprintf(args[8], "ip=%s", ip);
+        
+        int count = -1;
+        bool parse_result = true;
+        do {
+            count += 1;
+            args[9 + count] = new char[256];
+            parse_result = parse_get_argument(
+                    argsForApp, args[9 + count], count, ' ');
+        } while(parse_result);
+        args[9 + count] = NULL;
+        
+        execvp("pin", (char* const*)args);
         exit(ERR_EXIT_CODE);
     }
     return true;
 }
-bool PinLoader :: pinWait() {
+bool PinLoader :: pinBlockWait() {
     int status;
-    if(pin_proc == 0) {
+    if(pin_proc == -1) {
         return false;
     }
     waitpid(pin_proc, &status, WCONTINUED);
-    pin_proc = 0;
     if(WIFEXITED(status) == 0) {
         return true;
     }
@@ -108,4 +167,48 @@ bool PinLoader :: pinWait() {
         return true;
     }
     return true;
+}
+bool PinLoader :: pinKill() {
+    int status;
+    // If pin wasn't run
+    if(pin_proc == -1) {
+        return false;
+    }
+    // If pin yet didn't terminated
+    if(waitpid(pin_proc, &status, WNOHANG) == 0) {
+        kill(pin_proc, SIGKILL);
+    }
+    // Allow to run pin yet some times
+    hardReset();
+    return true;
+}
+byte* PinLoader :: getBinary() {
+    char tmp_file_path[128];
+    FILE* tmp_file;
+    setTmpFilePath(tmp_file_path, unique_key_of_file);
+ 
+    tmp_file = fopen(tmp_file_path, "rb");
+    if(tmp_file == NULL) {
+        return NULL;
+    }
+    
+    fseek(tmp_file, 0, SEEK_END);
+    int size, nsize;
+    size = nsize = ftell(tmp_file);
+    byte* binary = new byte[sizeof(int) + size];
+    // Host byte order to network byte order
+    hton((byte*)&nsize, sizeof(int));
+    // Write length
+    memcpy(&binary[0], &nsize, sizeof(int));
+    // Write other data
+    fseek(tmp_file, 0, SEEK_SET);
+    size_t reading_items = fread(&binary[0 + sizeof(int)], sizeof(byte),
+            size, tmp_file);
+    if(reading_items < size) {
+        delete[] binary;
+        binary = NULL;
+    }
+    fclose(tmp_file);
+
+    return binary;
 }

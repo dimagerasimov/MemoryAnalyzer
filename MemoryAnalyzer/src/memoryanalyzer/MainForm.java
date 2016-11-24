@@ -11,14 +11,13 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.jfree.chart.ChartPanel;
 import analyzer.ViewerThread;
 import common.MsgBox;
 import common.WaitBox;
 import crossplatform.Help;
-import memoryanalyzer.FormConnectTo.ConnectToFeedback;
-import network.PinClient;
-import network.PinServerThread;
 
 /**
  *
@@ -31,70 +30,35 @@ public class MainForm extends javax.swing.JFrame {
      */
     public MainForm() {
         initComponents();
-        initAppChooser();
         initResultsChooser();
-        initPinClient();
-        connectTo = new ConnectToFeedback();        
+        // Create special form for connection
+        formConnectTo = new FormConnectTo(this);
         // Initialization current chart as null
         chart = null;
+        tmpResultsFileName = null;
+        
         // If user OS isn't supported then show message
         if(Help.GetOS().equals(Help.ERR_UNKNOWN_OS)) {
             errorUnknownSystem();
         }
-        setCenterLocation();
-    }
-
-    private void initAppChooser() {
-        String executableFileExtension = Help.GetExecutableFileExtension();
-        appChooser = new JFileChooser();
-        appChooser.setDialogTitle("Open Application...");
-        appChooser.setMultiSelectionEnabled(false);
-        FileNameExtensionFilter filterNameExtension;
-        switch(Help.GetOS()) {
-            case "Linux":
-                // A special case
-                //DO NOTHING
-                break;
-            default:
-                filterNameExtension = new FileNameExtensionFilter("Application (*"
-                    + executableFileExtension + ")", executableFileExtension.replaceAll("\\.", ""));
-                appChooser.removeChoosableFileFilter(appChooser.getChoosableFileFilters()[0]);
-                appChooser.addChoosableFileFilter(filterNameExtension);
-                break;
-        }
-    }
-
-    private void initResultsChooser() {
-        String binaryFileExtension = Help.GetBinaryFileExtension();
-        resultsChooser = new JFileChooser();
-        resultsChooser.setDialogTitle("Open Results...");
-        resultsChooser.setMultiSelectionEnabled(false);
-        FileNameExtensionFilter filterNameExtension;
-        filterNameExtension = new FileNameExtensionFilter("Binary output (*"
-            + binaryFileExtension + ")", binaryFileExtension.replaceAll("\\.", ""));
-        resultsChooser.removeChoosableFileFilter(resultsChooser.getChoosableFileFilters()[0]);
-        resultsChooser.addChoosableFileFilter(filterNameExtension);
-    }
-    
-    private void initPinClient() {
         try {
-            pinClient = new PinClient();
-        } catch(IOException ex) {
-            new MsgBox(this, "Error!", "Not available local port!",
+            // Run the local server with default parameters
+            pinServerProcess = Runtime.getRuntime().exec(Help.GetPinServerPath()
+                + " port=" + Help.GetDefaultPinPort(), null, new File(Help.GetPinWorkDirPath()));
+            Thread.sleep(1000);
+            if(!pinServerProcess.isAlive()) {
+                new MsgBox(this, "Error!", "Pin server can't be run!\n"
+                        + "May be pin server already was running on "
+                        + Help.GetDefaultPinPort() + " port.",
+                    MsgBox.ACTION_CLOSE).setVisible(true);
+            }
+        } catch (InterruptedException | IOException ex) {
+            pinServerProcess = null;
+            new MsgBox(this, "Error!", "Pin server isn't found!\n"
+                    + "Default path: \"" + Help.GetPinServerPath() + "\".",
                 MsgBox.ACTION_CLOSE).setVisible(true);
         }
-    }
-    
-    private void errorUnknownSystem()
-    {
-        new MsgBox(this, "Error!", "Your operating system is not supported!",
-            MsgBox.ACTION_CLOSE).setVisible(true);
-    }
-    
-    private void setCenterLocation()
-    {
-        Point p = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
-        this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
+        setCenterLocation();
     }
     
     public void updateChart(ChartPanel newChart) {
@@ -110,11 +74,52 @@ public class MainForm extends javax.swing.JFrame {
     }
     
     public void clearChart() {
+        deleteTmpResultsFile();
         chart = null;
         jPanel4Chart.removeAll();
         jPanel4Chart.revalidate();
         repaint();
     }
+
+    public String getTmpResultsFileName() {
+        tmpResultsFileName = Help.GetBinaryResultsPath();
+        return tmpResultsFileName;
+    }
+    
+    private void initResultsChooser() {
+        String binaryFileExtension = Help.GetBinaryFileExtension();
+        resultsChooser = new JFileChooser();
+        resultsChooser.setMultiSelectionEnabled(false);
+        FileNameExtensionFilter filterNameExtension;
+        filterNameExtension = new FileNameExtensionFilter("Binary output (*"
+            + binaryFileExtension + ")", binaryFileExtension.replaceAll("\\.", ""));
+        resultsChooser.removeChoosableFileFilter(resultsChooser.getChoosableFileFilters()[0]);
+        resultsChooser.addChoosableFileFilter(filterNameExtension);
+    }
+    
+    private void errorUnknownSystem()
+    {
+        new MsgBox(this, "Error!", "Your operating system is not supported!",
+            MsgBox.ACTION_CLOSE).setVisible(true);
+    }
+    
+    private void setCenterLocation()
+    {
+        Point p = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
+        this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
+    }
+    
+    private void deleteTmpResultsFile() {
+        if(tmpResultsFileName != null) {
+            try {
+                Files.deleteIfExists(Paths.get(tmpResultsFileName));
+            } catch (IOException ex) {
+                // DO NOTHING
+            }
+        }
+        tmpResultsFileName = null;
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -133,12 +138,10 @@ public class MainForm extends javax.swing.JFrame {
         jMenuItemSaveBinFile = new javax.swing.JMenuItem();
         jMenuItemClose = new javax.swing.JMenuItem();
         jMenuItemExit = new javax.swing.JMenuItem();
-        jMenuProperties = new javax.swing.JMenu();
-        jMenuItemConnectTo = new javax.swing.JMenuItem();
 
         jMenuItem1.setText("jMenuItem1");
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("MemoryAnalyzer");
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
@@ -159,10 +162,11 @@ public class MainForm extends javax.swing.JFrame {
         );
         jPanel4ChartLayout.setVerticalGroup(
             jPanel4ChartLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 355, Short.MAX_VALUE)
+            .addGap(0, 351, Short.MAX_VALUE)
         );
 
         jMenuFile.setText("File");
+        jMenuFile.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
 
         jMenuItemOpenApp.setText("New Test...");
         jMenuItemOpenApp.addActionListener(new java.awt.event.ActionListener() {
@@ -206,18 +210,6 @@ public class MainForm extends javax.swing.JFrame {
 
         jMenuBar.add(jMenuFile);
 
-        jMenuProperties.setText("Properties");
-
-        jMenuItemConnectTo.setText("Connect to...");
-        jMenuItemConnectTo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemConnectToActionPerformed(evt);
-            }
-        });
-        jMenuProperties.add(jMenuItemConnectTo);
-
-        jMenuBar.add(jMenuProperties);
-
         setJMenuBar(jMenuBar);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -235,35 +227,7 @@ public class MainForm extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jMenuItemOpenAppActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemOpenAppActionPerformed
-        if(connectTo.ip.equals(Help.LOOPBACK)) {
-            int ret = appChooser.showOpenDialog(this);
-            if(ret != JFileChooser.APPROVE_OPTION) {
-                return;
-            }
-            File resultsFile = appChooser.getSelectedFile();
-            if(resultsFile != null && resultsFile.exists()) {
-                connectTo.remotePath = resultsFile.getAbsolutePath();
-            }
-            else {
-                return;
-            }
-        }
-        if(!Help.IsValidIP(connectTo.ip)) {
-            new MsgBox(this, "Error!", "Invalid IP-address for remote connection!",
-                MsgBox.ACTION_OK).setVisible(true);
-            return;
-        }
-        if(!Help.IsValidPort(connectTo.port)) {
-            new MsgBox(this, "Error!", "Invalid port for remote connection!",
-                MsgBox.ACTION_OK).setVisible(true);
-            return;
-        }
-        PinServerThread pinServerThread = new PinServerThread(
-                this, connectTo, pinClient);
-        WaitBox threadWaitBox = new WaitBox("Remote connection...");
-        threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        threadWaitBox.setVisible(true);
-        threadWaitBox.start(pinServerThread);
+        formConnectTo.setVisible(true);
     }//GEN-LAST:event_jMenuItemOpenAppActionPerformed
 
     private void jMenuItemExitActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExitActionPerformed
@@ -272,6 +236,7 @@ public class MainForm extends javax.swing.JFrame {
     }//GEN-LAST:event_jMenuItemExitActionPerformed
 
     private void jMenuItemOpenResultsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemOpenResultsActionPerformed
+        resultsChooser.setDialogTitle("Open Results...");
         int ret = resultsChooser.showOpenDialog(this);
         if(ret != JFileChooser.APPROVE_OPTION) {
             return;
@@ -280,16 +245,13 @@ public class MainForm extends javax.swing.JFrame {
         if(resultsFile == null || !resultsFile.exists()) {
             return;
         }
+        clearChart();
         ViewerThread viewerThread = new ViewerThread(this, resultsFile.getAbsolutePath());
         WaitBox threadWaitBox = new WaitBox("Reading of file...");
         threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         threadWaitBox.setVisible(true);
         threadWaitBox.start(viewerThread);
     }//GEN-LAST:event_jMenuItemOpenResultsActionPerformed
-
-    private void jMenuItemConnectToActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemConnectToActionPerformed
-        new FormConnectTo(this, connectTo).setVisible(true);
-    }//GEN-LAST:event_jMenuItemConnectToActionPerformed
 
     private void jMenuItemCloseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCloseActionPerformed
         clearChart();
@@ -302,31 +264,58 @@ public class MainForm extends javax.swing.JFrame {
     }//GEN-LAST:event_formComponentResized
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        pinClient.dispose();
+        deleteTmpResultsFile();
+        formConnectTo.setVisible(false);
+        formConnectTo.dispose();
+        this.setVisible(false);
+        this.dispose();
+        if(pinServerProcess != null) {
+            pinServerProcess.destroy();
+        }
+        System.exit(0);
     }//GEN-LAST:event_formWindowClosed
 
     private void jMenuItemSaveBinFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveBinFileActionPerformed
-        // TODO add your handling code here:
+        if(tmpResultsFileName == null || !Files.exists(Paths.get(tmpResultsFileName))) {
+            new MsgBox(this, "Notice", "No data to save!",
+                MsgBox.ACTION_OK).setVisible(true);
+            return;
+        }
+        resultsChooser.setDialogTitle("Save Results...");
+        int ret = resultsChooser.showSaveDialog(this);
+        if(ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File resultsFile = resultsChooser.getSelectedFile();
+        if(resultsFile != null) {
+            try {
+                //String 
+                Files.deleteIfExists(Paths.get(resultsFile.getAbsolutePath()));
+                Files.move(Paths.get(tmpResultsFileName), Paths.get(resultsFile.getAbsolutePath()));
+                tmpResultsFileName = null;
+            } catch (IOException ex) {
+                new MsgBox(this, "Error!", "Unable to save data!",
+                    MsgBox.ACTION_OK).setVisible(true);
+            }
+        }        
     }//GEN-LAST:event_jMenuItemSaveBinFileActionPerformed
 
     // Private variables
-    private final ConnectToFeedback connectTo;
-    private JFileChooser appChooser;
+    private final FormConnectTo formConnectTo;
+    private Process pinServerProcess;
     private JFileChooser resultsChooser;
-    private PinClient pinClient;
     private ChartPanel chart;
+    private String tmpResultsFileName;
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuBar jMenuBar;
     private javax.swing.JMenu jMenuFile;
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItemClose;
-    private javax.swing.JMenuItem jMenuItemConnectTo;
     private javax.swing.JMenuItem jMenuItemExit;
     private javax.swing.JMenuItem jMenuItemOpenApp;
     private javax.swing.JMenuItem jMenuItemOpenResults;
     private javax.swing.JMenuItem jMenuItemSaveBinFile;
-    private javax.swing.JMenu jMenuProperties;
     private javax.swing.JPanel jPanel4Chart;
     // End of variables declaration//GEN-END:variables
 }

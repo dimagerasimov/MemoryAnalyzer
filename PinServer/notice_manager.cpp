@@ -11,27 +11,41 @@
 
 using namespace std;
 
-void notice(const char* message) {
-    cout << message << endl;
-}
-void ini_client_notice(bool suc, int sock_fd) {
-    if(!suc) {
-        cout << "The client with key \""
-                << sock_fd << "\" was ignored." << endl;
+extern pthread_mutex_t mutex;
+
+void print_notice(int type_notice, void* arg) {
+    pthread_mutex_lock(&mutex);
+    switch(type_notice) {
+        case BIND_NOTICE:
+            cout << "Bind on " << *((short int*)arg) << " port successfully." << endl;
+            break;
+        case NOTICE:
+            cout << (char*)arg << endl;
+            break;
+        case ERR:
+            cerr << (char*)arg << endl;
+            exit(-1);
+            break;
+        case INI_SUC_CLIENT_NOTICE:
+            cout << "The client with key \""
+                << *((int*)arg) << "\" was added successfully." << endl;
+            break;
+        case INI_FAIL_CLIENT_NOTICE:
+            cout << "The client with key \""
+                << *((int*)arg) << "\" was ignored." << endl;
+            break;
+        case FINI_CLIENT_NOTICE:
+            cout << "The client with key \""
+                << *((int*)arg) << "\" was finished successfully." << endl;
+            break;
+        case CLIENT_HUNG_UP:
+            cout << "The client with key \""
+                << *((int*)arg) << "\" hung up." << endl;
+            break;
+        case CONNECTION_RESET:
+            cout << "The client with key \"" << *((int*)arg) <<
+                "\" has exceeded the limit of incorrect queries. Connection reset." << endl;
+            break;
     }
-    else {
-        cout << "The client with key \""
-                << sock_fd << "\" was added successfully." << endl;
-    }
-}
-void fini_client_notice(int sock_fd) {
-    cout << "The client with key \""
-        << sock_fd << "\" was finished successfully." << endl;
-}
-void bind_notice(short int port) {
-    cout << "Bind on " << port << " port successfully." << endl;
-}
-void err(const char* message) {
-    cerr << message << endl;
-    exit(-1);
+    pthread_mutex_unlock(&mutex);
 }

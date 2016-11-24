@@ -18,7 +18,8 @@
 #include "utf_text.hpp"
 
 void parseUTFtext_command(UTF_text* utf_text, char* command, char* text_command);
-bool parse_get_argument(const char* text_command, char* text_arg, const int num_arg);
+bool parse_get_argument(const char* text_command,
+        char* text_arg, const int num_arg, char delimiter);
 
 #endif /* PROTOCOL_PARSER_HPP */
 

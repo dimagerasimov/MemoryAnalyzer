@@ -17,6 +17,7 @@
 #include "protocol.hpp"
 
 #define PIN_TOOL_PATH "./memory_trace_net.so"
+#define TMP_FOLDER "./temp"
 
 class PinLoader {
     public:
@@ -24,18 +25,24 @@ class PinLoader {
         ~PinLoader();
         
         bool setPathToApp(const char* pathToApp);
+        bool setArgsForApp(const char* argsForApp);
         bool setPort(const char* port);
-        const char* getPathToApp();
-        const int getPort();
-        bool isReady();
+        bool setKey(const int unique_key_of_file);
+        bool isPinReady();
         bool pinExec(char* ip);
-        bool pinWait();
+        bool pinBlockWait();
+        bool pinKill();
+        byte* getBinary();
         
     private:
+        void hardReset();
+        
         pid_t pin_proc;
-        int port4Connect;
+        int portToConnect;
         char pathToApp[MAX_MESSAGE_LENGTH];
+        char argsForApp[MAX_MESSAGE_LENGTH];
+        int unique_key_of_file;
 };
 
-#endif /* INITPINCLIENT_HPP */
+#endif /* PIN_LOADER_HPP */
 

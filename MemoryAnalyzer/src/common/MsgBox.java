@@ -42,7 +42,7 @@ public class MsgBox extends javax.swing.JFrame {
         // Remember action on close
         this.action_on_close = retJFrame.getDefaultCloseOperation();
         // Set my action
-        retJFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        retJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         //Remember size of label
         heightOfLabelMessage = jLabelMessage.getHeight();
     }
@@ -57,7 +57,24 @@ public class MsgBox extends javax.swing.JFrame {
     }
     private String ConvertToMultiline(String line)
     {
-        return "<html><p align=\"center\">" + line.replaceAll("\n", "<br>") + "</p></html>";
+        final int max_length_line = 30;
+        String result = "";
+        String[] lines = line.split("\n");
+        for(int i = 0; i < lines.length; i++) {
+            if(lines[i].length() <= max_length_line) {
+                result += lines[i] + "\n";
+            }
+            else {
+                int cur_position = 0;
+                for(int j = 0; j < lines[i].length() / max_length_line; j++) {
+                    result += lines[i].substring(cur_position, cur_position + max_length_line) + "\n";
+                    cur_position += max_length_line;
+                }
+                result += lines[i].substring(cur_position, lines[i].length()) + "\n";
+            }
+        }
+        return "<html><p align=\"center\">"
+                + result.replaceAll("\n", "<br>") + "</p></html>";
     }
     
     /**
@@ -76,6 +93,11 @@ public class MsgBox extends javax.swing.JFrame {
         setAlwaysOnTop(true);
         setMinimumSize(new java.awt.Dimension(300, 100));
         setResizable(false);
+        addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                formMouseEntered(evt);
+            }
+        });
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
@@ -108,7 +130,7 @@ public class MsgBox extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jButtonOk)
-                .addGap(128, 128, 128))
+                .addGap(125, 125, 125))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -158,6 +180,10 @@ public class MsgBox extends javax.swing.JFrame {
         heightOfLabelMessage = jLabelMessage.getHeight();
         this.setCenterPosition();
     }//GEN-LAST:event_jLabelMessageComponentResized
+
+    private void formMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseEntered
+        jLabelMessage.revalidate();
+    }//GEN-LAST:event_formMouseEntered
     
     // My variables
     private final JFrame retJFrame;

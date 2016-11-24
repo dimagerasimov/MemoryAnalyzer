@@ -16,11 +16,12 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#include "notice_manager.hpp"
 #include "map_clients.hpp"
 #include "thread_client.hpp"
 
 #define DEFAULT_PORT 4028
+
+pthread_mutex_t mutex;
 
 int parseToPort(int argc, char* argv[]) {
     int port = DEFAULT_PORT;
@@ -38,7 +39,7 @@ int parseToPort(int argc, char* argv[]) {
             }
         }
     } catch(...) {
-        notice("Invalid arguments command line! Will be used default port...");
+        print_notice(NOTICE, (void*)"Invalid arguments command line! Will be used default port...");
         port = DEFAULT_PORT;
     }
     return port;
@@ -50,9 +51,13 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in server_addr;
     MapClients clients;
     
+    // Initialization of mutex//////
+    pthread_mutex_init(&mutex, NULL);
+    /////////////////////////////////
+    
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(listen_fd == -1) {
-        err("Internal error! Not available file descriptors!");
+        print_notice(ERR, (void*)"Internal error! Not available file descriptors!");
     }
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -61,19 +66,20 @@ int main(int argc, char* argv[]) {
     
     result = bind(listen_fd, (const struct sockaddr*) &server_addr, sizeof(server_addr));
     if(result != 0) {
-        err("Internal error! Bind operation failed!");
+        print_notice(ERR, (void*)"Internal error! Bind operation failed!");
     }
     else {
-        bind_notice(ntohs(server_addr.sin_port));
+        int ntohport = ntohs(server_addr.sin_port);
+        print_notice(BIND_NOTICE, (void*)&ntohport);
     }
     result = listen(listen_fd, MAX_NUMBER_CLIENTS);
-    notice("Pin server was started...");            
+    print_notice(NOTICE, (void*)"Pin server was started...");
     while(1) {
-        sockaddr client_addr;
+        struct sockaddr client_addr;
         socklen_t length_addr = sizeof(client_addr);
         int new_client = accept(listen_fd, &client_addr, &length_addr);
         if(new_client == -1) {
-            notice("Unable to receive incoming connection.");
+            print_notice(NOTICE, (void*)"Unable to receive incoming connection.");
         }
         else {
             bool isOk = clients.addClient(new_client);
@@ -97,16 +103,24 @@ int main(int argc, char* argv[]) {
                 pthread_t threadId;
                 int err = pthread_create(&threadId, 0, start_routine, threadParams);
                 if(err != 0) {
-                    notice("Internal error! Server tries to continue...");
+                    print_notice(NOTICE, (void*)"Internal error! Server tries to continue...");
                     continue;
                 }
             }
             // Type message on the console - "was or wasn't added"
-            ini_client_notice(isOk, new_client);
+            if(!isOk) {
+                print_notice(INI_FAIL_CLIENT_NOTICE, &new_client);
+            } else {
+                print_notice(INI_SUC_CLIENT_NOTICE, &new_client);
+            }
         }
     }   
     close(listen_fd);
-    notice("Pin server was finished...");
+    print_notice(NOTICE, (void*)"Pin server was finished...");
+    
+    // Initialization of mutex//////
+    pthread_mutex_destroy(&mutex);
+    /////////////////////////////////
     return 0;
 }
 
