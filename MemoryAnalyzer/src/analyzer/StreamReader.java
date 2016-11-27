@@ -18,6 +18,7 @@ import static bintypes.T_Size_t.size_tToBytes;
 import static bintypes.T_Long.readLong;
 import static bintypes.T_Size_t.readSize_t;
 import static bintypes.T_Ptr.readPtr;
+import network.Protocol;
 
 /**
  *
@@ -123,7 +124,7 @@ public class StreamReader {
         int offset, size, the_rest_size, skip_size, count_error;
         boolean switcher_on;
         byte[] tmp_binary_data;
-        final int MAX_ERROR = 10;
+        final int MAX_ERROR = Protocol.TRANSLATION_TIMEOUT / 2;
         final int SIZE_BUFFER = 1<<15;
         byte[] binary_data1 = new byte[SIZE_BUFFER];
         byte[] binary_data2 = new byte[SIZE_BUFFER];

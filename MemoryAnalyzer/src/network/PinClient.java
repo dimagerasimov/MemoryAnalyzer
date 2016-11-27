@@ -21,7 +21,7 @@ public class PinClient {
         do {
             pinSocket = getValidServerSocket();
         } while(pinSocket == null);
-        pinSocket.setSoTimeout(Protocol.CONNECTION_TIMEOUT * 1000);
+        pinSocket.setSoTimeout(Protocol.TRANSLATION_TIMEOUT * 1000);
     }
     
     public void dispose() {

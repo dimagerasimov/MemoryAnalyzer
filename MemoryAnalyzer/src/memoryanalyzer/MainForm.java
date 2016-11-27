@@ -289,9 +289,10 @@ public class MainForm extends javax.swing.JFrame {
         File resultsFile = resultsChooser.getSelectedFile();
         if(resultsFile != null) {
             try {
-                //String 
-                Files.deleteIfExists(Paths.get(resultsFile.getAbsolutePath()));
-                Files.move(Paths.get(tmpResultsFileName), Paths.get(resultsFile.getAbsolutePath()));
+                String resultsAbsPath = resultsFile.getAbsolutePath().replace(
+                        Help.GetBinaryFileExtension(), "") + Help.GetBinaryFileExtension();
+                Files.deleteIfExists(Paths.get(resultsAbsPath));
+                Files.move(Paths.get(tmpResultsFileName), Paths.get(resultsAbsPath));
                 tmpResultsFileName = null;
             } catch (IOException ex) {
                 new MsgBox(this, "Error!", "Unable to save data!",
