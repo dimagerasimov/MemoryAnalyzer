@@ -1,6 +1,6 @@
 #include "pin.H"
 #include <iostream>
-#include <sys/times.h>
+#include <sys/time.h>
 
 #include "bin_journal.h"
 #include "net.h"
@@ -19,8 +19,9 @@ typedef VOID ( *FP_EXIT )( int );
 /* Global variables							*/
 /* ===================================================================== */
 
+PIN_MUTEX pin_mutex;
 type_long last_time_in_ms;
-clock_t start_time;
+struct timeval start_time;
 Net* transmitter;
 BinJournal* binJournal;
 
@@ -48,7 +49,7 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 /* ===================================================================== */
 
 #if defined(STDLIB)
-	#define EXIT "exit"
+	#define EXIT "_exit"
 	#if defined(TARGET_MAC)
 	#define MALLOC "_malloc"
 	#define FREE "_free"
@@ -72,7 +73,10 @@ void LogError(char msg[]) {
 /* ===================================================================== */
 
 type_long GetCurrentTimeMilisec() {
-	type_long current_time_in_ms = (double)(times(NULL) - start_time) * 10.0;
+	struct timeval current_time;
+	gettimeofday(&current_time, NULL);
+	type_long current_time_in_ms = (current_time.tv_sec - start_time.tv_sec) * 1000
+		+ (current_time.tv_usec - start_time.tv_usec) / 1000;
 	if(last_time_in_ms >= current_time_in_ms){
 		last_time_in_ms += 1;
 	}
@@ -110,21 +114,35 @@ int ParseToPort(int argc, char* argv[]) {
 }
 VOID Ini( int argc, char* argv[] ) {
 	LogInfo((char*)"\n*** MEMORY TRACE ***\n");
-	// Write to a binary journal
+	// Init pin mutex
+	PIN_MutexInit(&pin_mutex);
+	// Init a binary journal
 	binJournal = new BinJournal(KnobOutputFile.Value().c_str());
 	transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
-	start_time = times(NULL);
+	gettimeofday(&start_time, NULL);
 	last_time_in_ms = 0;//Initialize
 }
 VOID Fini( VOID ) {
+	if(transmitter == NULL || binJournal == NULL) {
+		return;
+	}
+
+	PIN_MutexLock(&pin_mutex);
+
 	bool pushOk = binJournal->Push();
 	if(!pushOk) {
 		LogError((char*)
 		"Error: The binary journal hasn't been recorded. Try again.");
 	}
 	transmitter->FlushAll();
+	
 	delete transmitter;
+	transmitter = NULL;
 	delete binJournal;
+	binJournal = NULL;
+
+	PIN_MutexUnlock(&pin_mutex);
+	PIN_MutexFini(&pin_mutex);
 }
 
 /* ===================================================================== */
@@ -133,6 +151,8 @@ VOID Fini( VOID ) {
 
 VOID * NewMalloc( FP_MALLOC orgFuncptr, size_t arg0, ADDRINT returnIp )
 {
+	PIN_MutexLock(&pin_mutex);
+
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	VOID * v = orgFuncptr( arg0 );
@@ -169,15 +189,19 @@ VOID * NewMalloc( FP_MALLOC orgFuncptr, size_t arg0, ADDRINT returnIp )
 	BinfElement binfElement(FCODE_MALLOC, count, types, size_of_data, data);
 	binJournal->AddBinf(binfElement, MFREE_SECTION);
 	transmitter->SendBinf(binfElement, current_time);
-
+	
 	delete[] types;
 	delete[] data;
+
+	PIN_MutexUnlock(&pin_mutex);
 
 	return v;
 }
 
 VOID NewFree( FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
 {
+	PIN_MutexLock(&pin_mutex);
+
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	orgFuncptr( (size_t)arg0 );
@@ -212,6 +236,8 @@ VOID NewFree( FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
 
 	delete[] types;
 	delete[] data;
+
+	PIN_MutexUnlock(&pin_mutex);
 }
 
 VOID NewExit( FP_EXIT orgFuncptr, ADDRINT arg0) {
