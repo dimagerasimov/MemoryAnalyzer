@@ -75,8 +75,8 @@ void LogError(char msg[]) {
 type_long GetCurrentTimeMilisec() {
 	struct timeval current_time;
 	gettimeofday(&current_time, NULL);
-	type_long current_time_in_ms = (current_time.tv_sec - start_time.tv_sec) * 1000
-		+ (current_time.tv_usec - start_time.tv_usec) / 1000;
+	type_long current_time_in_ms = (current_time.tv_sec - start_time.tv_sec) * 1000000
+		+ (current_time.tv_usec - start_time.tv_usec);
 	if(last_time_in_ms >= current_time_in_ms){
 		last_time_in_ms += 1;
 	}
