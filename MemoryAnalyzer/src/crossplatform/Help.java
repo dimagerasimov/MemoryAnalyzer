@@ -14,7 +14,7 @@ public class Help {
     public static final String LOOPBACK = "127.0.0.1";
     public static final int MIN_PORT = 1024;
     public static final int MAX_PORT = 65536;
-    public static final int MSEC_IN_SEC = 1000;
+    public static final int USEC_IN_SEC = 1000000;
     
     //Memory constants
     public static final int WIN_MB = 1<<20;//2^20

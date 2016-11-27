@@ -114,12 +114,12 @@ public class BinAnalyzer {
                     allmemHashMap.remove(tmp_long_key);
                 }
                 freed_sum_level += (double)value_sum / GetNumBytesInMb();
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.MSEC_IN_SEC;
+                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
                 allmem_mas.add(new XY(current_time, freed_sum_level));
             }
         } else {
             step_graphic_time = (double)GetMFreeTime(binfArray.get(
-                    binfArray.size() - 1)).getValue() / (Help.MSEC_IN_SEC * MAX_POINTS);
+                    binfArray.size() - 1)).getValue() / (Help.USEC_IN_SEC * MAX_POINTS);
             tmp_count = 0;
             tmp_time = 0.0;
             tmp_sum = 0.0;
@@ -143,7 +143,7 @@ public class BinAnalyzer {
                 freed_sum_level += (double)value_sum / GetNumBytesInMb();
                 tmp_sum += freed_sum_level;
                 tmp_count += 1;
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.MSEC_IN_SEC;
+                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
                 if(current_time - tmp_time > step_graphic_time) {
                     tmp_time += step_graphic_time * (int)(current_time - tmp_time) / step_graphic_time;
                     allmem_mas.add(new XY((current_time + tmp_time) / 2.0,
@@ -185,17 +185,17 @@ public class BinAnalyzer {
             for( BinfElement tmpBinfElement : unfreedCollection ) {
                 value_sum = (double)GetMFreeSize(tmpBinfElement).getValue() / GetNumBytesInMb();
                 unfreed_sum += value_sum;
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.MSEC_IN_SEC;
+                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
                 unfreed_mas.add(new XY(current_time, unfreed_sum));
             }
         }
         else {
-            step_graphic_time = (double)allmemPreGraphicInfo.max_time / (Help.MSEC_IN_SEC * MAX_POINTS);
+            step_graphic_time = (double)allmemPreGraphicInfo.max_time / (Help.USEC_IN_SEC * MAX_POINTS);
             tmp_time = 0.0;
             for( BinfElement tmpBinfElement : unfreedCollection ) {
                 value_sum = (double)GetMFreeSize(tmpBinfElement).getValue() / GetNumBytesInMb();
                 unfreed_sum += value_sum;
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.MSEC_IN_SEC;
+                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
 
                 if(current_time - tmp_time > step_graphic_time) {
                     tmp_time += step_graphic_time * (int)(current_time - tmp_time) / step_graphic_time;
@@ -236,7 +236,7 @@ public class BinAnalyzer {
     
     // Private variables
     // My time offset for graphic
-    private final static double TIME_EPS = (1.0 / Help.MSEC_IN_SEC) / 8.0;
+    private final static double TIME_EPS = (1.0 / Help.USEC_IN_SEC) / 8.0;
     // Maximum points for graphic
     private final static int MAX_POINTS = 250;
 }
