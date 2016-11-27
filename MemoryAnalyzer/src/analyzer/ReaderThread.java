@@ -22,6 +22,7 @@ public class ReaderThread extends Thread {
         this.dis = null;
         binfArray = new ArrayList(Help.WIN_MB);
         isFinishSuccessfully = false;
+        errorMessage = null;
     }   
     public ReaderThread(DataInputStream dis) {
         super();
@@ -29,6 +30,7 @@ public class ReaderThread extends Thread {
         this.dis = dis;
         binfArray = new ArrayList(Help.WIN_MB);
         isFinishSuccessfully = false;
+        errorMessage = null;
     }   
     @Override
     public void run() {
@@ -40,11 +42,14 @@ public class ReaderThread extends Thread {
             }
             isFinishSuccessfully = true;
         } catch (InterruptedException | IOException ex) {
-            // DO NOTHING
+            errorMessage = ex.getMessage();
         }
     }
     public boolean isFinishSuccessfully() {
         return isFinishSuccessfully;
+    }
+    public String getErrorMessage() {
+        return errorMessage;
     }
     public ArrayList<BinfElement> GetStreamData() {
         return new ArrayList(binfArray);
@@ -55,4 +60,5 @@ public class ReaderThread extends Thread {
     private final DataInputStream dis;
     private final ArrayList<BinfElement> binfArray;
     private boolean isFinishSuccessfully;
+    private String errorMessage;
 }

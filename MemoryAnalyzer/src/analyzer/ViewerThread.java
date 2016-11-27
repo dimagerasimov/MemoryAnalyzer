@@ -42,7 +42,7 @@ public class ViewerThread extends Thread {
                     BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData())));
             }
             else {
-                new MsgBox(feedback, "Error!", "Unknown format data!",
+                new MsgBox(feedback, "Error!", readerThread.getErrorMessage(),
                     MsgBox.ACTION_OK).setVisible(true);
             }
         } catch (InterruptedException ex) {
