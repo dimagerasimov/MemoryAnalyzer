@@ -19,11 +19,10 @@
 class Net {
 	public:
 		bool SendBinf(BinfElement& element, long long int current_time);
+		void FlushAll();
 
 		Net(int ipv4, int port);
 		~Net( void );
-
-		static void ReverseBytes(byte* arr, int size);
 	private:
 		int sock_fd;
 		int offset;
@@ -70,17 +69,9 @@ Net :: Net(int ipv4, int port)
 Net :: ~Net( void )
 {
 	if(sock_fd != -1) {
-		int res;
-		if(offset > 0) {
-			// Then send a data to remote computer (blocking)
-			res = send(sock_fd, buffer, offset * sizeof(byte), 0);
-			if(res < (int)(offset * sizeof(byte))) {
-				exit(1);
-			}
-		}
 		byte end_connection_symbol = END_CONNECTION_SYMBOL;
 		// Blocking connection
-		res = send(sock_fd, &end_connection_symbol, sizeof(byte), 0);
+		int res = send(sock_fd, &end_connection_symbol, sizeof(byte), 0);
 		if(res <= 0) {
 			exit(1);
 		}
@@ -115,6 +106,15 @@ bool Net :: SendBinf(BinfElement& element, long long int current_time)
 	memcpy(&buffer[offset], element.GetData(), element.GetSizeOfData());
 	offset += element.GetSizeOfData();
 	return true;
+}
+void Net :: FlushAll() {
+	if(sock_fd != -1 && offset > 0) {
+		// Then send a data to remote computer (blocking)
+		int res = send(sock_fd, buffer, offset * sizeof(byte), MSG_DONTWAIT);
+		if(res < (int)(offset * sizeof(byte))) {
+			exit(1);
+		}
+	}
 }
 
 #endif

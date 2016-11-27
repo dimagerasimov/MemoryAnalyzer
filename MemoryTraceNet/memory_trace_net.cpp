@@ -1,6 +1,6 @@
 #include "pin.H"
 #include <iostream>
-#include <ctime>
+#include <sys/times.h>
 
 #include "bin_journal.h"
 #include "net.h"
@@ -13,6 +13,7 @@
 
 typedef VOID * ( *FP_MALLOC )( size_t );
 typedef VOID ( *FP_FREE )( size_t );
+typedef VOID ( *FP_EXIT )( int );
 
 /* ===================================================================== */
 /* Global variables							*/
@@ -71,7 +72,7 @@ void LogError(char msg[]) {
 /* ===================================================================== */
 
 type_long GetCurrentTimeMilisec() {
-	type_long current_time_in_ms = (double)(clock() - start_time) / CLOCKS_PER_SEC * 1000;
+	type_long current_time_in_ms = (double)(times(NULL) - start_time) * 10.0;
 	if(last_time_in_ms >= current_time_in_ms){
 		last_time_in_ms += 1;
 	}
@@ -112,7 +113,7 @@ VOID Ini( int argc, char* argv[] ) {
 	// Write to a binary journal
 	binJournal = new BinJournal(KnobOutputFile.Value().c_str());
 	transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
-	start_time = clock();
+	start_time = times(NULL);
 	last_time_in_ms = 0;//Initialize
 }
 VOID Fini( VOID ) {
@@ -121,8 +122,9 @@ VOID Fini( VOID ) {
 		LogError((char*)
 		"Error: The binary journal hasn't been recorded. Try again.");
 	}
-	delete binJournal;
+	transmitter->FlushAll();
 	delete transmitter;
+	delete binJournal;
 }
 
 /* ===================================================================== */
@@ -210,6 +212,13 @@ VOID NewFree( FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
 
 	delete[] types;
 	delete[] data;
+}
+
+VOID NewExit( FP_EXIT orgFuncptr, ADDRINT arg0) {
+	// Call the relocated entry point of the original (replaced) routine.
+	//
+	Fini();
+	orgFuncptr( arg0 );
 }
 
 /* ===================================================================== */
@@ -330,22 +339,36 @@ VOID ImageLoad( IMG img, VOID *v )
 			EXIT, imgName);
 		LogInfo(message);
 
-		if(!RTN_IsSafeForProbedInsertion(rtn))
+		if(!RTN_IsSafeForProbedReplacement(rtn))
 		{
-			sprintf(message, "Unsafe to trace \"%s\" function in module %s",
+			sprintf(message, "Unsafe to replace \"%s\" function in module %s",
 				EXIT, imgName);
 			LogError(message);
 		}
 		else
 		{
-			sprintf(message, "Inserted call before \"%s\" function in module %s",
+			sprintf(message, "Replaced \"%s\" function in module %s",
 				EXIT, imgName);
 			LogInfo(message);
 
-			// Insert the application routine before usage
+			// Define a function prototype that describes the application routine
+			// that will be replaced.
 			//
-			RTN_InsertCallProbed(rtn, IPOINT_BEFORE,
-				AFUNPTR(Fini), IARG_END);
+			PROTO proto_exit = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
+				EXIT, PIN_PARG(int), PIN_PARG_END() );
+
+			// Replace the application routine with the replacement function.
+			// Additional arguments have been added to the replacement routine.
+			//
+			RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewExit),
+				IARG_PROTOTYPE, proto_exit,
+				IARG_ORIG_FUNCPTR,
+				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+				IARG_END);
+			
+			// Free the function prototype.
+			//
+			PROTO_Free( proto_exit );
 		}
 	}
 }
