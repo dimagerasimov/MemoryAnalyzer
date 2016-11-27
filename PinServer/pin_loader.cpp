@@ -133,20 +133,21 @@ bool PinLoader :: pinExec(char* ip) {
         args[6] = new char[256];
         strcpy(args[6], pathToApp);
         
-        args[7] = new char[32];
-        sprintf(args[7], "port=%d", portToConnect);
-        
-        args[8] = new char[32];
-        sprintf(args[8], "ip=%s", ip);
-        
         int count = -1;
         bool parse_result = true;
         do {
             count += 1;
-            args[9 + count] = new char[256];
+            args[7 + count] = new char[256];
             parse_result = parse_get_argument(
-                    argsForApp, args[9 + count], count, ' ');
-        } while(parse_result);
+                    argsForApp, args[7 + count], count, ' ');
+        } while(parse_result);      
+                        
+        // For this string memory allocated before (in loop)
+        sprintf(args[7 + count], "ip=%s", ip);
+        
+        args[8 + count] = new char[32];
+        sprintf(args[8 + count], "port=%d", portToConnect);
+        
         args[9 + count] = NULL;
         
         execvp("pin", (char* const*)args);
