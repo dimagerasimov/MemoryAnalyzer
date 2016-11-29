@@ -24,7 +24,11 @@ public class Help {
     public static final String ERR_UNKNOWN_OS = "ERR_UNKNOWN_OS";
     
     public static String GetOS() {
-        return System.getProperty("os.name");
+        String os_name = System.getProperty("os.name");
+        if(os_name.contains("Windows")) {
+            os_name = "Windows";
+        }
+        return os_name;
     }
     public static int GetNumBytesInMb() {
         String myOS = GetOS();
