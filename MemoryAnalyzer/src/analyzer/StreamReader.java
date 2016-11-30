@@ -12,13 +12,13 @@ import bintypes.BinfElement;
 import bintypes.T_Long;
 import bintypes.T_Ptr;
 import bintypes.T_Size_t;
+import network.Protocol;
 import static bintypes.T_Long.longToBytes;
 import static bintypes.T_Ptr.ptrToBytes;
 import static bintypes.T_Size_t.size_tToBytes;
 import static bintypes.T_Long.readLong;
 import static bintypes.T_Size_t.readSize_t;
 import static bintypes.T_Ptr.readPtr;
-import network.Protocol;
 
 /**
  *

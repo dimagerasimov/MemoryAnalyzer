@@ -43,8 +43,8 @@ public class MsgBox extends javax.swing.JFrame {
         this.action_on_close = retJFrame.getDefaultCloseOperation();
         // Set my action
         retJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        //Remember size of label
-        heightOfLabelMessage = jLabelMessage.getHeight();
+        // Move to center of screen
+        this.setCenterPosition();
     }
     private void InitMsgBox(String title, String message)
     {
@@ -53,7 +53,6 @@ public class MsgBox extends javax.swing.JFrame {
         String multiline_text = ConvertToMultiline(message);
         this.jLabelMessage.setText(multiline_text);
         this.jLabelMessage.setToolTipText(multiline_text);
-        this.setCenterPosition();
     }
     private String ConvertToMultiline(String line)
     {
@@ -130,7 +129,7 @@ public class MsgBox extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jButtonOk)
-                .addGap(125, 125, 125))
+                .addGap(117, 117, 117))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -175,10 +174,8 @@ public class MsgBox extends javax.swing.JFrame {
     }//GEN-LAST:event_jButtonOkMouseClicked
 
     private void jLabelMessageComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_jLabelMessageComponentResized
-        this.setSize(this.getWidth(), this.getHeight()
-                + jLabelMessage.getHeight() - heightOfLabelMessage);
-        heightOfLabelMessage = jLabelMessage.getHeight();
-        this.setCenterPosition();
+        String[] diff_line = jLabelMessage.getText().split("<br>");
+        this.setSize(this.getWidth(), FONT_SIZE * (diff_line.length + 5));
     }//GEN-LAST:event_jLabelMessageComponentResized
 
     private void formMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseEntered
@@ -186,12 +183,13 @@ public class MsgBox extends javax.swing.JFrame {
     }//GEN-LAST:event_formMouseEntered
     
     // My variables
+    private static final int FONT_SIZE = 15;
+    
     private final JFrame retJFrame;
     private final int key_action;
     private final boolean lock;
     private final int action_on_close;
-    private int heightOfLabelMessage;
-    
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonOk;
     private javax.swing.JLabel jLabelMessage;
