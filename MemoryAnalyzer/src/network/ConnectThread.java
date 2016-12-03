@@ -148,20 +148,18 @@ public class ConnectThread extends Thread {
     
     private void downloadAndSaveBinaryFile(DataInputStream dis) throws IOException {
         int size_file = dis.readInt();
-        byte[] binary = new byte[1<<10];
+        byte[] binary = new byte[size_file];
+        
+        int tmp_length, recv_length = 0;
+        while(recv_length < size_file) {
+            tmp_length = dis.available();
+            dis.read(binary, recv_length, tmp_length);
+            recv_length += tmp_length;
+        }
         
         DataOutputStream dos = new DataOutputStream(new FileOutputStream(
                 tmpResultsFileName));
-        int tmp_length = 0, recv_length = 0;
-        while(recv_length < size_file) {
-            tmp_length = binary.length;
-            if(dis.available() < binary.length) {
-                tmp_length = dis.available();
-            }
-            dis.read(binary, 0, tmp_length);
-            dos.write(binary, 0, tmp_length);
-            recv_length += tmp_length;
-        }
+        dos.write(binary, 0, size_file);
         dos.close();
     }
     
