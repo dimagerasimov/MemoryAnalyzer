@@ -110,6 +110,10 @@ public class BinAnalyzer {
                     freed_sum_abs += (double)value_sum / GetNumBytesInMb();
                 }
                 else {
+                    if(retBinfElement == null) {
+                        // otherwise, the error in the window application
+                        continue;
+                    }
                     value_sum = -GetMFreeSize(retBinfElement).getValue();
                     allmemHashMap.remove(tmp_long_key);
                 }

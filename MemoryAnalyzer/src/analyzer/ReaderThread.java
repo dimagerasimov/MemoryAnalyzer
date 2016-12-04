@@ -49,6 +49,9 @@ public class ReaderThread extends Thread {
         return isFinishSuccessfully;
     }
     public String getErrorMessage() {
+        if(errorMessage == null || errorMessage.equals("")) {
+            errorMessage = "Error causes during read incoming data!";
+        }
         return errorMessage;
     }
     public ArrayList<BinfElement> GetStreamData() {
