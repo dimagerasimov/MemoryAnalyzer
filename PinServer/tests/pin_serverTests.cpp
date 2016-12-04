@@ -331,7 +331,7 @@ int main(int argc, char** argv) {
     std::cout << "%TEST_FINISHED% time=" << getTestTimePassed()
             << " testManyClientsMultiThread (pin_serverTests)" << std::endl;
 
-    sleep(CONNECTION_TIMEOUT + 1);
+    sleep(CONNECTION_TIMEOUT + 5);
 
     std::cout << "%TEST_STARTED% testIsServerAvailable (pin_serverTests)" << std::endl;
     if(!testIsServerAvailable()) {
