@@ -28,6 +28,7 @@ class PinLoader {
         bool setArgsForApp(const char* argsForApp);
         bool setPort(const char* port);
         bool setKey(const int unique_key_of_file);
+        bool isPinExist();
         bool isPinReady();
         bool pinExec(char* ip);
         bool pinBlockWait();
@@ -38,10 +39,11 @@ class PinLoader {
         void hardReset();
         
         pid_t pin_proc;
+        bool init;
         int portToConnect;
+        int unique_key_of_file;
         char pathToApp[MAX_MESSAGE_LENGTH];
         char argsForApp[MAX_MESSAGE_LENGTH];
-        int unique_key_of_file;
 };
 
 #endif /* PIN_LOADER_HPP */

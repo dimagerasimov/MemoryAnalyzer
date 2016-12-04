@@ -160,7 +160,7 @@ public class ConnectThread extends Thread {
             dis.read(binary, recv_length, tmp_length);
             recv_length += tmp_length;
         }
-                
+
         DataOutputStream dos = new DataOutputStream(new FileOutputStream(
                 tmpResultsFileName));
         dos.write(binary, 0, size_file);

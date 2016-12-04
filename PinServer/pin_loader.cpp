@@ -22,10 +22,11 @@ PinLoader :: ~PinLoader() {
     pinKill();
 }
 void PinLoader :: hardReset() {
+    init = false;
     pin_proc = -1;
+    unique_key_of_file = -1;
     portToConnect = 0;
     pathToApp[0] = '\0';
-    unique_key_of_file = -1;
 }
 void setTmpFilePath(char buffer[], pid_t pin_proc) {
     sprintf(buffer, "%s/%d.out", TMP_FOLDER, pin_proc);
@@ -61,7 +62,7 @@ bool PinLoader :: setKey(const int unique_key_of_file) {
     this->unique_key_of_file = unique_key_of_file;
     return true;
 }
-bool isPinExist() {
+bool PinLoader :: isPinExist() {
     pid_t child_proc = fork();
     if(child_proc == 0) {
         // Close stdout that child will not wrote on the screen
@@ -92,11 +93,12 @@ bool PinLoader :: isPinReady() {
     if(unique_key_of_file == -1) {
         return false;
     }
-    return isPinExist();
+    init = isPinExist();
+    return init;
 }
 bool PinLoader :: pinExec(char* ip) {
     // Test re-run
-    if(pin_proc != -1) {
+    if(!init || pin_proc != -1) {
         return false;
     }
     // Make fork current process
@@ -157,7 +159,7 @@ bool PinLoader :: pinExec(char* ip) {
 }
 bool PinLoader :: pinBlockWait() {
     int status;
-    if(pin_proc == -1) {
+    if(!init || pin_proc == -1) {
         return false;
     }
     waitpid(pin_proc, &status, WCONTINUED);
@@ -172,7 +174,7 @@ bool PinLoader :: pinBlockWait() {
 bool PinLoader :: pinKill() {
     int status;
     // If pin wasn't run
-    if(pin_proc == -1) {
+    if(!init || pin_proc == -1) {
         return false;
     }
     // If pin yet didn't terminated
