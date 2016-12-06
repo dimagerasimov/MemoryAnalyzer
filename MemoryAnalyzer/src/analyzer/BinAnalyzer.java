@@ -24,7 +24,10 @@ import static crossplatform.Help.GetNumBytesInMb;
  *
  * @author master
  */
-public class BinAnalyzer { 
+public class BinAnalyzer {
+    // Maximum points for graphic
+    public final static int AVERAGE_NUMBER_POINTS = 250;
+    
     public static TableXYDataset MakeAnalyzeMFree(
             ArrayList<BinfElement> binfArray) {
         if(binfArray.isEmpty()) {
@@ -96,11 +99,11 @@ public class BinAnalyzer {
         BinfElement retBinfElement;
         HashMap<Long, BinfElement> allmemHashMap = new HashMap(Help.WIN_MB);
         // Allocate memory
-        ArrayList<XY> allmem_mas = new ArrayList(MAX_POINTS);
+        ArrayList<XY> allmem_mas = new ArrayList(AVERAGE_NUMBER_POINTS);
         // First value
         allmem_mas.add(new XY(0.0, freed_sum_level));
 
-        if(binfArray.size() < MAX_POINTS) {
+        if(binfArray.size() < AVERAGE_NUMBER_POINTS) {
             for(BinfElement tmpBinfElement : binfArray)
             {
                 tmp_long_key = GetMFreeAddress(tmpBinfElement).getValue();
@@ -123,7 +126,7 @@ public class BinAnalyzer {
             }
         } else {
             step_graphic_time = (double)GetMFreeTime(binfArray.get(
-                    binfArray.size() - 1)).getValue() / (Help.USEC_IN_SEC * MAX_POINTS);
+                    binfArray.size() - 1)).getValue() / (Help.USEC_IN_SEC * AVERAGE_NUMBER_POINTS);
             tmp_count = 0;
             tmp_time = 0.0;
             tmp_sum = 0.0;
@@ -175,7 +178,7 @@ public class BinAnalyzer {
         // Extract usable info from AllmemPreGraphicInfo
         HashMap<Long, BinfElement> allmemHashMap = allmemPreGraphicInfo.allmemHashMap;
         // Allocate memory
-        ArrayList<XY> unfreed_mas = new ArrayList(MAX_POINTS);
+        ArrayList<XY> unfreed_mas = new ArrayList(AVERAGE_NUMBER_POINTS);
         // First value
         unfreed_mas.add(new XY(0.0, unfreed_sum));
         // Get values of collection that put their in TreeMap
@@ -185,7 +188,7 @@ public class BinAnalyzer {
             unfreedMap.put(GetMFreeTime(tmpBinfElement).getValue(), tmpBinfElement);
         }
         Collection<BinfElement> unfreedCollection = unfreedMap.values();
-        if(unfreedCollection.size() < MAX_POINTS) {
+        if(unfreedCollection.size() < AVERAGE_NUMBER_POINTS) {
             for( BinfElement tmpBinfElement : unfreedCollection ) {
                 value_sum = (double)GetMFreeSize(tmpBinfElement).getValue() / GetNumBytesInMb();
                 unfreed_sum += value_sum;
@@ -194,7 +197,7 @@ public class BinAnalyzer {
             }
         }
         else {
-            step_graphic_time = (double)allmemPreGraphicInfo.max_time / (Help.USEC_IN_SEC * MAX_POINTS);
+            step_graphic_time = (double)allmemPreGraphicInfo.max_time / (Help.USEC_IN_SEC * AVERAGE_NUMBER_POINTS);
             tmp_time = 0.0;
             for( BinfElement tmpBinfElement : unfreedCollection ) {
                 value_sum = (double)GetMFreeSize(tmpBinfElement).getValue() / GetNumBytesInMb();
@@ -241,6 +244,4 @@ public class BinAnalyzer {
     // Private variables
     // My time offset for graphic
     private final static double TIME_EPS = (1.0 / Help.USEC_IN_SEC) / 8.0;
-    // Maximum points for graphic
-    private final static int MAX_POINTS = 250;
 }

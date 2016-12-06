@@ -26,6 +26,17 @@ public class BinfElement {
     public static final byte FCODE_MALLOC = 0;
     public static final byte FCODE_FREE = 1;
     
+    //INFORMATION ABOUT ELEMENTS
+    public static final int FCOUNT_MALLOC = 4;
+    public static final int FCOUNT_FREE = 3;
+    public static final int FSIZE_OF_DATA_MALLOC = T_Ptr.getSize() + T_Size_t.getSize() + T_Ptr.getSize()
+            + T_Long.getSize();
+    public static final int FSIZE_OF_DATA_FREE = T_Ptr.getSize() + T_Ptr.getSize() + T_Long.getSize();
+    public static final int BINFMALLOC_SIZE = 3 * Byte.BYTES + BinfElement.FCOUNT_MALLOC * Byte.BYTES
+            + BinfElement.FSIZE_OF_DATA_MALLOC;
+    public static final int BINFFREE_SIZE = 3 * Byte.BYTES + BinfElement.FCOUNT_FREE * Byte.BYTES
+            + BinfElement.FSIZE_OF_DATA_FREE;
+    
     //Public content
     public byte code_function;
     public byte count;

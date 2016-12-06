@@ -24,93 +24,11 @@ import static bintypes.T_Ptr.readPtr;
  *
  * @author master
  */
-public class StreamReader {    
-    public static int ReadMFreeItem(byte[] content, int global_offset, int size,
-            BinfElement binfElement) throws IOException
-    {
-        int internal_offset = global_offset;
-        //READ FUNCTION CODE
-        if(size - internal_offset < Byte.BYTES)
-            { return 0; }
-        else
-        {
-            binfElement.code_function = content[internal_offset];
-            if(binfElement.code_function != BinfElement.FCODE_MALLOC
-                && binfElement.code_function != BinfElement.FCODE_FREE) {
-                // Special case (multi-purpose symbol)
-                return -1;
-            }
-            internal_offset += Byte.BYTES;
-        }
-        //READ COUNT
-        if(size - internal_offset < Byte.BYTES)
-            { return 0; }
-        else
-        {
-            binfElement.count = content[internal_offset];
-            if(binfElement.count <= 0) {
-                specialInfoThrow(global_offset, size);
-            }
-            internal_offset += Byte.BYTES;
-        }
-        //READ TYPES
-        if(size - internal_offset < binfElement.count * Byte.BYTES)
-            { return 0; }
-        else
-        {
-            binfElement.types = new byte[binfElement.count];
-            System.arraycopy(content, internal_offset,
-                    binfElement.types, 0, binfElement.count * Byte.BYTES);
-            internal_offset += binfElement.count * Byte.BYTES;
-        }
-        //READ SIZE OF DATA
-        if(size - internal_offset < Byte.BYTES)
-            { return 0; }
-        else
-        {
-            binfElement.size_of_data = content[internal_offset];
-            if(binfElement.size_of_data <= 0) {
-                specialInfoThrow(global_offset, size);
-            }
-            internal_offset += Byte.BYTES;
-        }
-        
-        //READ DATA
-        if(size - internal_offset < binfElement.size_of_data * Byte.BYTES)
-            { return 0; }
-        
-        byte[] bytes_buffer;
-        binfElement.data = new byte[binfElement.size_of_data];
-        for(int i = 0, offset = 0; i < binfElement.count; i++)
-        {
-            switch(binfElement.types[i]) {
-                case BinfElement.TCODE_PTR:
-                    T_Ptr pointer = readPtr(content, offset + internal_offset);
-                    bytes_buffer = ptrToBytes(pointer);
-                    System.arraycopy(bytes_buffer, 0,
-                            binfElement.data, offset, bytes_buffer.length);
-                    offset += bytes_buffer.length;
-                    break;
-                case BinfElement.TCODE_SIZE_T:
-                    T_Size_t size_t = readSize_t(content, offset + internal_offset);
-                    bytes_buffer = size_tToBytes(size_t);
-                    System.arraycopy(bytes_buffer, 0,
-                            binfElement.data, offset, bytes_buffer.length);
-                    offset += bytes_buffer.length;
-                    break;
-                case BinfElement.TCODE_LONG:
-                    T_Long long_value = readLong(content, offset + internal_offset);
-                    bytes_buffer = longToBytes(long_value);
-                    System.arraycopy(bytes_buffer, 0,
-                            binfElement.data, offset, bytes_buffer.length);
-                    offset += bytes_buffer.length;
-                    break;
-                default:
-                    specialInfoThrow(global_offset, size);
-            }              
-        }
-        return binfElement.GetSize();
-    }
+public class StreamReader {
+    // Codes to begin / end session
+    public static final byte BEGIN_SESSION = (byte) 254;
+    public static final byte END_SESSION = (byte) 255;
+    
     public static void ReadInputStream(DataInputStream dis,
             ArrayList<BinfElement> binfArray) throws IOException, InterruptedException {
         byte rByte;
@@ -181,6 +99,143 @@ public class StreamReader {
         }
         throw new IOException("Unable to receive data! May be connection is slow.");
     }
+    private static int ReadMFreeItem(byte[] content, int global_offset, int size,
+            BinfElement binfElement) throws IOException
+    {
+        int internal_offset = global_offset;
+        //READ MALLOC
+        if(size - internal_offset < Byte.BYTES)
+            { return 0; }
+        binfElement.code_function = content[internal_offset];
+        if(binfElement.code_function != BinfElement.FCODE_MALLOC
+                && binfElement.code_function != BinfElement.FCODE_FREE) {
+                // Special case (multi-purpose symbol)
+                return -1;
+        }
+        internal_offset += Byte.BYTES;
+        if(binfElement.code_function == (byte)BinfElement.FCODE_MALLOC) {
+            //READ COUNT
+            if(size - internal_offset < Byte.BYTES)
+                { return 0; }
+            binfElement.count = content[internal_offset];
+            if(binfElement.count != BinfElement.FCOUNT_MALLOC) {
+                specialInfoThrow(global_offset, size);
+            }
+            internal_offset += Byte.BYTES;
+            //READ TYPES
+            if(size - internal_offset < binfElement.count * Byte.BYTES)
+                { return 0; }
+            binfElement.types = new byte[binfElement.count];
+            System.arraycopy(content, internal_offset,
+                    binfElement.types, 0, binfElement.count * Byte.BYTES);
+            if(binfElement.types[0] != BinfElement.TCODE_PTR
+                    || binfElement.types[1] != BinfElement.TCODE_SIZE_T
+                    || binfElement.types[2] != BinfElement.TCODE_PTR
+                    || binfElement.types[3] != BinfElement.TCODE_LONG) {
+                specialInfoThrow(global_offset, size);
+            }
+            internal_offset += binfElement.count * Byte.BYTES;
+            //READ SIZE OF DATA
+            if(size - internal_offset < Byte.BYTES)
+                { return 0; }
+            binfElement.size_of_data = content[internal_offset];
+            if(binfElement.size_of_data != BinfElement.FSIZE_OF_DATA_MALLOC) {
+                specialInfoThrow(global_offset, size);
+            }
+            internal_offset += Byte.BYTES;
+            //READ DATA
+            if(size - internal_offset < binfElement.size_of_data * Byte.BYTES)
+                { return 0; }
+            int offset_in_data = 0;
+            byte[] bytes_buffer;
+            binfElement.data = new byte[binfElement.size_of_data];
+            //arg1
+            T_Ptr arg1 = readPtr(content, internal_offset);
+            bytes_buffer = ptrToBytes(arg1);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Ptr.getSize();
+            offset_in_data += T_Ptr.getSize();
+            //arg2
+            T_Size_t arg2 = readSize_t(content, internal_offset);
+            bytes_buffer = size_tToBytes(arg2);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Size_t.getSize();
+            offset_in_data += T_Size_t.getSize();
+            //arg3
+            T_Ptr arg3 = readPtr(content, internal_offset);
+            bytes_buffer = ptrToBytes(arg3);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Ptr.getSize();
+            offset_in_data += T_Ptr.getSize();
+            //arg4
+            T_Long arg4 = readLong(content, internal_offset);
+            bytes_buffer = longToBytes(arg4);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Long.getSize();
+            offset_in_data += T_Long.getSize();
+       } else if(binfElement.code_function == (byte)BinfElement.FCODE_FREE) {
+            //READ COUNT
+            if(size - internal_offset < Byte.BYTES)
+                { return 0; }
+            binfElement.count = content[internal_offset];
+            if(binfElement.count != BinfElement.FCOUNT_FREE) {
+                specialInfoThrow(global_offset, size);
+            }
+            internal_offset += Byte.BYTES;
+            //READ TYPES
+            if(size - internal_offset < binfElement.count * Byte.BYTES)
+                { return 0; }
+            binfElement.types = new byte[binfElement.count];
+            System.arraycopy(content, internal_offset,
+                    binfElement.types, 0, binfElement.count * Byte.BYTES);
+            if(binfElement.types[0] != BinfElement.TCODE_PTR
+                    || binfElement.types[1] != BinfElement.TCODE_PTR
+                    || binfElement.types[2] != BinfElement.TCODE_LONG) {
+                specialInfoThrow(global_offset, size);
+            }
+            internal_offset += binfElement.count * Byte.BYTES;
+            //READ SIZE OF DATA
+            if(size - internal_offset < Byte.BYTES)
+                { return 0; }
+            binfElement.size_of_data = content[internal_offset];
+            if(binfElement.size_of_data != BinfElement.FSIZE_OF_DATA_FREE) {
+                specialInfoThrow(global_offset, size);
+            }
+            internal_offset += Byte.BYTES;
+            //READ DATA
+            if(size - internal_offset < binfElement.size_of_data * Byte.BYTES)
+                { return 0; }
+            int offset_in_data = 0;
+            byte[] bytes_buffer;
+            binfElement.data = new byte[binfElement.size_of_data];
+            //arg1
+            T_Ptr arg1 = readPtr(content, internal_offset);
+            bytes_buffer = ptrToBytes(arg1);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Ptr.getSize();
+            offset_in_data += T_Ptr.getSize();
+            //arg2
+            T_Ptr arg2 = readPtr(content, internal_offset);
+            bytes_buffer = ptrToBytes(arg2);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Ptr.getSize();
+            offset_in_data += T_Ptr.getSize();
+            //arg3
+            T_Long arg3 = readLong(content, internal_offset);
+            bytes_buffer = longToBytes(arg3);
+            System.arraycopy(bytes_buffer, 0,
+                    binfElement.data, offset_in_data, bytes_buffer.length);
+            internal_offset += T_Long.getSize();
+            offset_in_data += T_Long.getSize();
+        }
+        return binfElement.GetSize();
+    }
     private static int skipUnknownSequence(byte[] content, int global_offset, int size)
             throws IOException {
         int num_skip_bytes, result_code;
@@ -199,9 +254,4 @@ public class StreamReader {
         throw new IOException("Error data! Size of packet=" + String.valueOf(size)
             + ", position=" + String.valueOf(cur_position) + "!");
     }
-    
-    // Private variables
-    // Codes to begin / end session
-    private static final byte BEGIN_SESSION = (byte) 254;
-    private static final byte END_SESSION = (byte) 255;
 }
