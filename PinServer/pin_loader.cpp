@@ -86,13 +86,19 @@ bool PinLoader :: isPinReady() {
     if(tmp == NULL) {
         return false;
     }
+    fclose(tmp);
     tmp = fopen(PIN_TOOL_PATH, "rb");
     if(tmp == NULL) {
         return false;
     }
+    fclose(tmp);
     if(unique_key_of_file == -1) {
         return false;
     }
+    char tmp_file_path[128];
+    setTmpFilePath(tmp_file_path, unique_key_of_file);
+    remove(tmp_file_path);
+    
     init = isPinExist();
     return init;
 }
@@ -188,8 +194,8 @@ bool PinLoader :: pinKill() {
 byte* PinLoader :: getBinary() {
     char tmp_file_path[128];
     FILE* tmp_file;
+    
     setTmpFilePath(tmp_file_path, unique_key_of_file);
- 
     tmp_file = fopen(tmp_file_path, "rb");
     if(tmp_file == NULL) {
         return NULL;
