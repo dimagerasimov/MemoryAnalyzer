@@ -30,12 +30,27 @@ bool writeUTF(int sock_fd, UTF_text* utf_text) {
     return true;
 }
 bool writeBinFile(int sock_fd, byte* binary) {
-    int real_length = ((int*)binary)[0];
-    ntoh((byte*)&real_length, sizeof(int));
-    real_length += sizeof(int);
-    int write_length = send(sock_fd, binary, real_length, MSG_NOSIGNAL);
-    if(write_length < real_length) {
-        return false;
+    int real_length = ((int*)binary)[0]; // only the size of data
+    ntoh((byte*)&real_length, sizeof(int)); // the network byte order to the host byte order
+    real_length += sizeof(int); // the full size of the transmitted data
+    
+    int offset, write_length, size_part, num_packets;
+    num_packets = real_length / MAX_SIZE_PACKET_4FILE;
+    offset = 0;
+    size_part = MAX_SIZE_PACKET_4FILE;
+    for(int i = 0; i < num_packets; i++) {
+        write_length = send(sock_fd, &binary[offset], size_part, MSG_NOSIGNAL);
+        if(write_length < size_part) {
+            return false;
+        }
+        offset += size_part;
+    }
+    size_part = real_length - num_packets * MAX_SIZE_PACKET_4FILE;
+    if(size_part > 0) {
+        write_length = send(sock_fd, &binary[offset], size_part, MSG_NOSIGNAL);
+        if(write_length < size_part) {
+            return false;
+        }
     }
     return true;
 }
