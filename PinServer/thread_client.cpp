@@ -12,6 +12,8 @@
 #include "thread_client.hpp"
 #include "pin_loader.hpp"
 
+#define MAX_SIZE_PACKET_4FILE (1<<22) // equals 4MB
+
 bool readUTF(int sock_fd, UTF_text* utf_text) {
     int read_length = recv(sock_fd, utf_text->getContent(),
             MAX_MESSAGE_LENGTH, MSG_NOSIGNAL);
