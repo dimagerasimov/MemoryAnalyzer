@@ -5,6 +5,9 @@
  */
 package crossplatform;
 
+import java.io.File;
+import java.io.IOException;
+
 /**
  *
  * @author master
@@ -136,5 +139,38 @@ public class Help {
             }
         }
         return true;
+    }
+    public static boolean isPinInstalled() {
+        boolean isInstalled;
+        try {
+            Process pinProcess = Runtime.getRuntime().exec("pin");
+            Thread.sleep(100);
+            if(pinProcess.isAlive()) {
+                throw new IOException();
+            }
+            isInstalled = true;
+        } catch (InterruptedException | IOException ex) {
+            isInstalled = false;
+        }
+        return isInstalled;
+    }
+    public static Process runPinServer() throws IOException {
+        Process pinServerProcess;
+        try {
+            // Run the local server with default parameters
+            pinServerProcess = Runtime.getRuntime().exec(Help.GetPinServerPath()
+                + " port=" + Help.GetDefaultPinPort(), null, new File(Help.GetPinWorkDirPath()));
+            Thread.sleep(1000);
+            if(!pinServerProcess.isAlive()) {
+                throw new IOException("Pin server can't be run!\n"
+                        + "May be pin server already was running on "
+                        + Help.GetDefaultPinPort() + " port.");
+            }
+        } catch (InterruptedException | IOException ex) {
+            pinServerProcess = null;
+            throw new IOException("Pin server isn't found!\n"
+                    + "Default path: \"" + Help.GetPinServerPath() + "\".");
+        }
+        return pinServerProcess;
     }
 }

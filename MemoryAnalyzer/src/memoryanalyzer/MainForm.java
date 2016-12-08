@@ -30,34 +30,33 @@ public class MainForm extends javax.swing.JFrame {
      */
     public MainForm() {
         initComponents();
-        initResultsChooser();
-        // Create special form for connection
-        formConnectTo = new FormConnectTo(this);
-        // Initialization current chart as null
-        chart = null;
-        tmpResultsFileName = null;
         
         // If user OS isn't supported then show message
         if(Help.GetOS().equals(Help.ERR_UNKNOWN_OS)) {
             errorUnknownSystem();
         }
-        try {
-            // Run the local server with default parameters
-            pinServerProcess = Runtime.getRuntime().exec(Help.GetPinServerPath()
-                + " port=" + Help.GetDefaultPinPort(), null, new File(Help.GetPinWorkDirPath()));
-            Thread.sleep(1000);
-            if(!pinServerProcess.isAlive()) {
-                new MsgBox(this, "Error!", "Pin server can't be run!\n"
-                        + "May be pin server already was running on "
-                        + Help.GetDefaultPinPort() + " port.",
-                    MsgBox.ACTION_CLOSE).setVisible(true);
-            }
-        } catch (InterruptedException | IOException ex) {
-            pinServerProcess = null;
-            new MsgBox(this, "Error!", "Pin server isn't found!\n"
-                    + "Default path: \"" + Help.GetPinServerPath() + "\".",
-                MsgBox.ACTION_CLOSE).setVisible(true);
+        // Check: is pin installed? If yes then run the pin server
+        pinServerProcess = null;
+        if(!Help.isPinInstalled()) {
+            new MsgBox(this, "Warning!", "Intel PIN is not installed!\n"
+                    + "Local analysis is not available!",
+                    MsgBox.ACTION_OK).setVisible(true);
         }
+        else {
+            try {
+                pinServerProcess = Help.runPinServer();
+            } catch(IOException ex) {
+                new MsgBox(this, "Warning!", ex.getMessage(),
+                        MsgBox.ACTION_OK).setVisible(true);
+            }
+        }
+        // Init chooser
+        initResultsChooser();
+        // Initialization current chart as null
+        chart = null;
+        tmpResultsFileName = null;
+        // Create special form for connection
+        formConnectTo = new FormConnectTo(this, pinServerProcess != null);
         setCenterLocation();
     }
     

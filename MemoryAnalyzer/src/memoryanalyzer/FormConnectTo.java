@@ -28,14 +28,22 @@ public class FormConnectTo extends javax.swing.JFrame {
     /**
      * Creates new form ConnectToForm
      * @param parent
+     * @param pinServerIsRunning
      */
-    public FormConnectTo(MainForm parent) {
+    public FormConnectTo(MainForm parent, boolean pinServerIsRunning) {
         initComponents();
         this.parent = parent;
         initAppChooser();
         // Add events for textfields on the form
         addEvents4JTextFieldIP();
         addEvents4JTextFieldPort();
+        if(pinServerIsRunning) {
+            activeRadioButtonLocalhost();
+        }
+        else {
+            this.jRadioButtonLocalhost.setEnabled(false);
+            activeRadioButtonRemoteComputer();
+        }
         setCenterLocation();
     }
     
@@ -131,6 +139,20 @@ public class FormConnectTo extends javax.swing.JFrame {
         return true;
     }
     
+    private void activeRadioButtonLocalhost() {
+        jRadioButtonLocalhost.setSelected(true);
+        jRadioButtonRemoteComputer.setSelected(false);
+        jTextFieldIP.setEnabled(false);
+        jTextFieldPort.setEnabled(false);
+    }
+    
+    private void activeRadioButtonRemoteComputer() {
+        jRadioButtonLocalhost.setSelected(false);
+        jRadioButtonRemoteComputer.setSelected(true);
+        jTextFieldIP.setEnabled(true);
+        jTextFieldPort.setEnabled(true);
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -204,7 +226,6 @@ public class FormConnectTo extends javax.swing.JFrame {
             }
         });
 
-        jRadioButtonLocalhost.setSelected(true);
         jRadioButtonLocalhost.setText("Localhost");
         jRadioButtonLocalhost.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -341,15 +362,11 @@ public class FormConnectTo extends javax.swing.JFrame {
     }//GEN-LAST:event_jButtonOpenDialogMouseClicked
 
     private void jRadioButtonLocalhostActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButtonLocalhostActionPerformed
-        jRadioButtonRemoteComputer.setSelected(false);
-        jTextFieldIP.setEnabled(false);
-        jTextFieldPort.setEnabled(false);
+        activeRadioButtonLocalhost();
     }//GEN-LAST:event_jRadioButtonLocalhostActionPerformed
 
     private void jRadioButtonRemoteComputerActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButtonRemoteComputerActionPerformed
-        jRadioButtonLocalhost.setSelected(false);
-        jTextFieldIP.setEnabled(true);
-        jTextFieldPort.setEnabled(true);
+        activeRadioButtonRemoteComputer();
     }//GEN-LAST:event_jRadioButtonRemoteComputerActionPerformed
 
     // Private variables
