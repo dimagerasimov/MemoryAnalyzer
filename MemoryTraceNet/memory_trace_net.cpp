@@ -1,6 +1,7 @@
 #include "pin.H"
 #include <iostream>
 #include <sys/time.h>
+#include <execinfo.h>
 
 #include "bin_journal.h"
 #include "net.h"
@@ -13,12 +14,14 @@
 
 typedef VOID * ( *FP_MALLOC )( size_t );
 typedef VOID ( *FP_FREE )( size_t );
+typedef ADDRINT ( *FP_MAIN)( int, char** );
 typedef VOID ( *FP_EXIT )( int );
 
 /* ===================================================================== */
 /* Global variables							*/
 /* ===================================================================== */
 
+bool bInit;
 PIN_MUTEX pin_mutex;
 type_long last_time_in_ms;
 struct timeval start_time;
@@ -48,8 +51,10 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 /* Names of replacement functions					*/
 /* ===================================================================== */
 
+#define MAIN "main"
+
 #if defined(STDLIB)
-	#define EXIT "_exit"
+	#define EXIT "exit"
 	#if defined(TARGET_MAC)
 	#define MALLOC "_malloc"
 	#define FREE "_free"
@@ -121,6 +126,7 @@ VOID Ini( int argc, char* argv[] ) {
 	transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
 	gettimeofday(&start_time, NULL);
 	last_time_in_ms = 0;//Initialize
+	bInit = false;
 }
 VOID Fini( VOID ) {
 	if(transmitter == NULL || binJournal == NULL) {
@@ -151,93 +157,104 @@ VOID Fini( VOID ) {
 
 VOID * NewMalloc( FP_MALLOC orgFuncptr, size_t arg0, ADDRINT returnIp )
 {
-	PIN_MutexLock(&pin_mutex);
-
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	VOID * v = orgFuncptr( arg0 );
 
-	// Current time
-	type_long current_time = GetCurrentTimeMilisec();
+	if(bInit) {
+		PIN_MutexLock(&pin_mutex);
 
-	byte count = 4;
-	byte size_of_data = sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr) + sizeof(type_long);
+		// Current time
+		type_long current_time = GetCurrentTimeMilisec();
 
-	byte* types = new byte[count * sizeof(byte)];	
-	types[0] = TCODE_PTR;
-	types[1] = TCODE_SIZE_T;
-	types[2] = TCODE_PTR;//ADDRINT equal type_ptr
-	types[3] = TCODE_LONG;
+		byte count = 4;
+		byte size_of_data = sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr) + sizeof(type_long);
 
-	byte* data = new byte[size_of_data];
-	type_ptr copy_v = (type_ptr)v;
-	type_size_t copy_arg0 = (type_size_t)arg0;
-	type_ptr copy_returnIp = (type_ptr)returnIp;
-	type_long copy_current_time = (type_long)current_time;
+		byte* types = new byte[count * sizeof(byte)];	
+		types[0] = TCODE_PTR;
+		types[1] = TCODE_SIZE_T;
+		types[2] = TCODE_PTR;//ADDRINT equal type_ptr
+		types[3] = TCODE_LONG;
 
-	Help :: hton((byte*)&copy_v, sizeof(type_ptr));
-	Help :: hton((byte*)&copy_arg0, sizeof(type_size_t));
-	Help :: hton((byte*)&copy_returnIp, sizeof(type_ptr));
-	Help :: hton((byte*)&copy_current_time, sizeof(type_long));
+		byte* data = new byte[size_of_data];
+		type_ptr copy_v = (type_ptr)v;
+		type_size_t copy_arg0 = (type_size_t)arg0;
+		type_ptr copy_returnIp = (type_ptr)returnIp;
+		type_long copy_current_time = (type_long)current_time;
 
-	memcpy(&data[0], &copy_v, sizeof(type_ptr));
-	memcpy(&data[0 + sizeof(type_ptr)], &copy_arg0, sizeof(type_size_t));
-	memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_size_t)], &copy_returnIp, sizeof(type_ptr));
-	memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr)],
-		&copy_current_time, sizeof(type_long));
+		Help :: hton((byte*)&copy_v, sizeof(type_ptr));
+		Help :: hton((byte*)&copy_arg0, sizeof(type_size_t));
+		Help :: hton((byte*)&copy_returnIp, sizeof(type_ptr));
+		Help :: hton((byte*)&copy_current_time, sizeof(type_long));
 
-	BinfElement binfElement(FCODE_MALLOC, count, types, size_of_data, data);
-	binJournal->AddBinf(binfElement, MFREE_SECTION);
-	transmitter->SendBinf(binfElement, current_time);
+		memcpy(&data[0], &copy_v, sizeof(type_ptr));
+		memcpy(&data[0 + sizeof(type_ptr)], &copy_arg0, sizeof(type_size_t));
+		memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_size_t)], &copy_returnIp, sizeof(type_ptr));
+		memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr)],
+			&copy_current_time, sizeof(type_long));
+
+		BinfElement binfElement(FCODE_MALLOC, count, types, size_of_data, data);
+		binJournal->AddBinf(binfElement, MFREE_SECTION);
+		transmitter->SendBinf(binfElement, current_time);
 	
-	delete[] types;
-	delete[] data;
+		delete[] types;
+		delete[] data;
 
-	PIN_MutexUnlock(&pin_mutex);
-
+		PIN_MutexUnlock(&pin_mutex);
+	}
 	return v;
 }
 
 VOID NewFree( FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
 {
-	PIN_MutexLock(&pin_mutex);
-
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	orgFuncptr( (size_t)arg0 );
 
-	// Current time
-	type_long current_time = GetCurrentTimeMilisec();
+	if(bInit) {
+		PIN_MutexLock(&pin_mutex);
 
-	byte count = 3;
-	byte size_of_data = sizeof(type_ptr) + sizeof(type_ptr) + sizeof(type_long);
+		// Current time
+		type_long current_time = GetCurrentTimeMilisec();
 
-	byte* types = new byte[count * sizeof(byte)];
-	types[0] = TCODE_PTR;
-	types[1] = TCODE_PTR;//ADDRINT equal type_ptr
-	types[2] = TCODE_LONG;
+		byte count = 3;
+		byte size_of_data = sizeof(type_ptr) + sizeof(type_ptr) + sizeof(type_long);
 
-	byte* data = new byte[size_of_data];
-	type_ptr copy_arg0 = (type_ptr)arg0;
-	type_ptr copy_returnIp = (type_ptr)returnIp;
-	type_long copy_current_time = (type_long)current_time;
+		byte* types = new byte[count * sizeof(byte)];
+		types[0] = TCODE_PTR;
+		types[1] = TCODE_PTR;//ADDRINT equal type_ptr
+		types[2] = TCODE_LONG;
 
-	Help :: hton((byte*)&copy_arg0, sizeof(type_ptr));
-	Help :: hton((byte*)&copy_returnIp, sizeof(type_ptr));
-	Help :: hton((byte*)&copy_current_time, sizeof(type_long));
+		byte* data = new byte[size_of_data];
+		type_ptr copy_arg0 = (type_ptr)arg0;
+		type_ptr copy_returnIp = (type_ptr)returnIp;
+		type_long copy_current_time = (type_long)current_time;
 
-	memcpy(&data[0], &copy_arg0, sizeof(type_ptr));
-	memcpy(&data[0 + sizeof(type_ptr)], &copy_returnIp, sizeof(type_ptr));
-	memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_ptr)], &copy_current_time, sizeof(type_long));
+		Help :: hton((byte*)&copy_arg0, sizeof(type_ptr));
+		Help :: hton((byte*)&copy_returnIp, sizeof(type_ptr));
+		Help :: hton((byte*)&copy_current_time, sizeof(type_long));
 
-	BinfElement binfElement(FCODE_FREE, count, types, size_of_data, data);
-	binJournal->AddBinf(binfElement, MFREE_SECTION);
-	transmitter->SendBinf(binfElement, current_time);
+		memcpy(&data[0], &copy_arg0, sizeof(type_ptr));
+		memcpy(&data[0 + sizeof(type_ptr)], &copy_returnIp, sizeof(type_ptr));
+		memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_ptr)], &copy_current_time, sizeof(type_long));
 
-	delete[] types;
-	delete[] data;
+		BinfElement binfElement(FCODE_FREE, count, types, size_of_data, data);
+		binJournal->AddBinf(binfElement, MFREE_SECTION);
+		transmitter->SendBinf(binfElement, current_time);
 
-	PIN_MutexUnlock(&pin_mutex);
+		delete[] types;
+		delete[] data;
+
+		PIN_MutexUnlock(&pin_mutex);
+	}
+}
+
+VOID NewMain( FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
+	// Call the relocated entry point of the original (replaced) routine.
+	//
+	bInit = true;
+	orgFuncptr( arg0, (char**)arg1 );
+	Fini();
 }
 
 VOID NewExit( FP_EXIT orgFuncptr, ADDRINT arg0) {
@@ -251,151 +268,101 @@ VOID NewExit( FP_EXIT orgFuncptr, ADDRINT arg0) {
 /* Instrumentation routines						*/
 /* ===================================================================== */
 
+bool ReplaceFunction(IMG* img, char* funcName) {
+	bool bResult = true;
+	char* imgName = (char*)IMG_Name(*img).c_str();
+	RTN rtn = RTN_FindByName( *img, funcName );
+
+	bResult = RTN_Valid(rtn);
+	if ( bResult )
+	{
+		char message[MAX_STR_LEN];
+		sprintf(message, "\nFound \"%s\" function in module \"%s\"",
+			funcName, imgName);
+		LogInfo(message);
+
+		bResult = RTN_Valid(rtn);
+		if(bResult)
+		{
+			if(strcmp(funcName, MAIN) == 0) {
+				PROTO proto_main = PROTO_Allocate( PIN_PARG(int), CALLINGSTD_DEFAULT,
+					funcName, PIN_PARG(int), PIN_PARG(char**), PIN_PARG_END() );
+				RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewMain),
+					IARG_PROTOTYPE, proto_main,
+					IARG_ORIG_FUNCPTR,
+					IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+					IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+					IARG_END);
+				PROTO_Free( proto_main );
+			}
+			else if(strcmp(funcName, MALLOC) == 0) {
+				PROTO proto_malloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+					MALLOC, PIN_PARG(size_t), PIN_PARG_END() );
+				RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewMalloc),
+					IARG_PROTOTYPE, proto_malloc,
+					IARG_ORIG_FUNCPTR,
+					IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+					IARG_RETURN_IP,
+					IARG_END);
+				PROTO_Free( proto_malloc );
+			}
+			else if(strcmp(funcName, FREE) == 0) {
+				PROTO proto_free = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
+					FREE, PIN_PARG(size_t), PIN_PARG_END() );
+				RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewFree),
+					IARG_PROTOTYPE, proto_free,
+					IARG_ORIG_FUNCPTR,
+					IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+					IARG_RETURN_IP,
+					IARG_END);
+				PROTO_Free(proto_free);
+			}
+			else if(strcmp(funcName, EXIT) == 0) {
+				PROTO proto_exit = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
+					EXIT, PIN_PARG(int), PIN_PARG_END() );
+				RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewExit),
+					IARG_PROTOTYPE, proto_exit,
+					IARG_ORIG_FUNCPTR,
+					IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+					IARG_END);
+				PROTO_Free(proto_exit);
+			}
+		}
+		sprintf(message, "\tWas it replaced? %s\n",
+			bResult == true ? "YES" : "NO");
+		LogInfo(message);
+	}
+	return bResult;
+}
+
 // Pin calls this function every time a new img is loaded.
 // It is best to do probe replacement when the image is loaded,
 // because only one thread knows about the image at this time.
 //
 VOID ImageLoad( IMG img, VOID *v )
 {
-	RTN rtn;
-	
-	char* imgName;
-	char message[MAX_STR_LEN];
+	char* imgName = (char*)IMG_Name(img).c_str();
 
-	imgName = (char*)IMG_Name(img).c_str();
-	if(string(imgName).find(STDLIB) >= MAX_STR_LEN)
-	{
-		sprintf(message, "Module %s ignored...", imgName);
-		LogInfo(message);
-		return;
-	};
-	
-	// See if malloc() is present in the image.  If so, replace it.
-	//
-	rtn = RTN_FindByName( img, MALLOC );
-	if (RTN_Valid(rtn))
-	{
-		sprintf(message, "Function \"%s\" found in module %s",
-			MALLOC, imgName);
-		LogInfo(message);
-
-		if(!RTN_IsSafeForProbedReplacement(rtn))
-		{
-			sprintf(message, "Unsafe to replace \"%s\" function in module %s",
-				MALLOC, imgName);
-			LogError(message);
-		}
-		else
-		{
-			sprintf(message, "Replaced \"%s\" function in module %s",
-				MALLOC, imgName);
-			LogInfo(message);
-
-			// Define a function prototype that describes the application routine
-			// that will be replaced.
-			//
-			PROTO proto_malloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
-				MALLOC, PIN_PARG(size_t), PIN_PARG_END() );
-
-			// Replace the application routine with the replacement function.
-			// Additional arguments have been added to the replacement routine.
-			//
-			RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewMalloc),
-				IARG_PROTOTYPE, proto_malloc,
-				IARG_ORIG_FUNCPTR,
-				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-				IARG_RETURN_IP,
-				IARG_END);
-			
-			// Free the function prototype.
-			//
-			PROTO_Free( proto_malloc );
-		}
+	if(!bInit)
+	{// Replace the "main" function with my function only once
+		ReplaceFunction(&img, (char*)MAIN);
 	}
-
-	// See if free() is present in the image.  If so, replace it.
-	//
-	rtn = RTN_FindByName( img, FREE );
-	if (RTN_Valid(rtn))
+	// Look for stdlib library
+	bool bStdlib = ( string(imgName).find(STDLIB) < MAX_STR_LEN );
+	if(bStdlib)
 	{
-		sprintf(message, "Function \"%s\" found in module %s",
-			FREE, imgName);
-		LogInfo(message);
-
-		if(!RTN_IsSafeForProbedReplacement(rtn))
-		{
-			sprintf(message, "Unsafe to replace \"%s\" function in module %s",
-				FREE, imgName);
-			LogError(message);
-		}
-		else
-		{
-			sprintf(message, "Replaced \"%s\" function in module %s",
-				FREE, imgName);
-			LogInfo(message);
-
-			// Define a function prototype that describes the application routine
-			// that will be replaced.
-			//
-			PROTO proto_free = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
-				FREE, PIN_PARG(size_t), PIN_PARG_END() );
-
-			// Replace the application routine with the replacement function.
-			// Additional arguments have been added to the replacement routine.
-			//
-			RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewFree),
-				IARG_PROTOTYPE, proto_free,
-				IARG_ORIG_FUNCPTR,
-				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-				IARG_RETURN_IP,
-				IARG_END);
-			
-			// Free the function prototype.
-			//
-			PROTO_Free( proto_free );
-		}
+		// Replace the "malloc" function with my function
+		ReplaceFunction(&img, (char*)MALLOC);
+		// Replace the "free" function with my function
+		ReplaceFunction(&img, (char*)FREE);
+		// Replace the "exit" function with my function
+		ReplaceFunction(&img, (char*)EXIT);
 	}
-
-	// See if exit() is present in the image.  If so, replace it.
-	//
-	rtn = RTN_FindByName( img, EXIT );
-	if (RTN_Valid(rtn))
+	else
 	{
-		sprintf(message, "Function \"%s\" found in module %s",
-			EXIT, imgName);
+		char message[MAX_STR_LEN];
+		sprintf(message, "<--- Module \"%s\" ignored... --->", imgName);
 		LogInfo(message);
-
-		if(!RTN_IsSafeForProbedReplacement(rtn))
-		{
-			sprintf(message, "Unsafe to replace \"%s\" function in module %s",
-				EXIT, imgName);
-			LogError(message);
-		}
-		else
-		{
-			sprintf(message, "Replaced \"%s\" function in module %s",
-				EXIT, imgName);
-			LogInfo(message);
-
-			// Define a function prototype that describes the application routine
-			// that will be replaced.
-			//
-			PROTO proto_exit = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
-				EXIT, PIN_PARG(int), PIN_PARG_END() );
-
-			// Replace the application routine with the replacement function.
-			// Additional arguments have been added to the replacement routine.
-			//
-			RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewExit),
-				IARG_PROTOTYPE, proto_exit,
-				IARG_ORIG_FUNCPTR,
-				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-				IARG_END);
-			
-			// Free the function prototype.
-			//
-			PROTO_Free( proto_exit );
-		}
 	}
 }
 
