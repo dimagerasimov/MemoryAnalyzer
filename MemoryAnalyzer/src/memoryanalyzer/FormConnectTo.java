@@ -322,9 +322,10 @@ public class FormConnectTo extends javax.swing.JFrame {
             port = Integer.valueOf(jTextFieldPort.getText());
             ip = jTextFieldIP.getText();
         }
-        
+
+        parent.setTitle(Help.DEFAULT_MAIN_FORM_TITLE);
         parent.clearChart();
-        
+
         ConnectThreadStruct connect_struct = new ConnectThreadStruct();
         connect_struct.ip = ip;
         connect_struct.port = port;
@@ -338,7 +339,7 @@ public class FormConnectTo extends javax.swing.JFrame {
 
         ConnectThread connectThread = new ConnectThread( parent, connect_struct,
                 parent.getTmpResultsFileName());
-        WaitBox threadWaitBox = new WaitBox("Receive data...");
+        WaitBox threadWaitBox = new WaitBox("Receiving data...");
         threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         threadWaitBox.setVisible(true);
         threadWaitBox.start(connectThread);

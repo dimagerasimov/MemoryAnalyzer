@@ -17,6 +17,7 @@ import org.jfree.chart.ChartPanel;
 import analyzer.ViewerThread;
 import common.MsgBox;
 import common.WaitBox;
+import common.GlobalVariables;
 import crossplatform.Help;
 
 /**
@@ -30,7 +31,6 @@ public class MainForm extends javax.swing.JFrame {
      */
     public MainForm() {
         initComponents();
-        
         // If user OS isn't supported then show message
         if(Help.GetOS().equals(Help.ERR_UNKNOWN_OS)) {
             errorUnknownSystem();
@@ -137,6 +137,15 @@ public class MainForm extends javax.swing.JFrame {
         jMenuItemSaveBinFile = new javax.swing.JMenuItem();
         jMenuItemClose = new javax.swing.JMenuItem();
         jMenuItemExit = new javax.swing.JMenuItem();
+        jMenuSettings = new javax.swing.JMenu();
+        jMenuCharts = new javax.swing.JMenu();
+        jRadioButtonOneChart = new javax.swing.JRadioButtonMenuItem();
+        jRadioButtonTwoCharts = new javax.swing.JRadioButtonMenuItem();
+        jMenuTimeline = new javax.swing.JMenu();
+        jRadioButtonTimelineMode1 = new javax.swing.JRadioButtonMenuItem();
+        jRadioButtonTimelineMode2 = new javax.swing.JRadioButtonMenuItem();
+        jRadioButtonTimelineMode3 = new javax.swing.JRadioButtonMenuItem();
+        jRadioButtonTimelineMode4 = new javax.swing.JRadioButtonMenuItem();
 
         jMenuItem1.setText("jMenuItem1");
 
@@ -161,11 +170,10 @@ public class MainForm extends javax.swing.JFrame {
         );
         jPanel4ChartLayout.setVerticalGroup(
             jPanel4ChartLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 351, Short.MAX_VALUE)
+            .addGap(0, 355, Short.MAX_VALUE)
         );
 
         jMenuFile.setText("File");
-        jMenuFile.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
 
         jMenuItemOpenApp.setText("New Test...");
         jMenuItemOpenApp.addActionListener(new java.awt.event.ActionListener() {
@@ -209,6 +217,72 @@ public class MainForm extends javax.swing.JFrame {
 
         jMenuBar.add(jMenuFile);
 
+        jMenuSettings.setText("Settings");
+
+        jMenuCharts.setText("Charts");
+
+        jRadioButtonOneChart.setText("One chart");
+        jRadioButtonOneChart.setToolTipText("Both graphics are placed to one chart");
+        jRadioButtonOneChart.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonOneChartStateChanged(evt);
+            }
+        });
+        jMenuCharts.add(jRadioButtonOneChart);
+
+        jRadioButtonTwoCharts.setSelected(true);
+        jRadioButtonTwoCharts.setText("Two charts");
+        jRadioButtonTwoCharts.setToolTipText("For every graphics there are own chart");
+        jRadioButtonTwoCharts.setEnabled(false);
+        jRadioButtonTwoCharts.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonTwoChartsStateChanged(evt);
+            }
+        });
+        jMenuCharts.add(jRadioButtonTwoCharts);
+
+        jMenuSettings.add(jMenuCharts);
+
+        jMenuTimeline.setText("Timeline period");
+
+        jRadioButtonTimelineMode1.setSelected(true);
+        jRadioButtonTimelineMode1.setText("One minute");
+        jRadioButtonTimelineMode1.setEnabled(false);
+        jRadioButtonTimelineMode1.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonTimelineMode1StateChanged(evt);
+            }
+        });
+        jMenuTimeline.add(jRadioButtonTimelineMode1);
+
+        jRadioButtonTimelineMode2.setText("Two minutes");
+        jRadioButtonTimelineMode2.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonTimelineMode2StateChanged(evt);
+            }
+        });
+        jMenuTimeline.add(jRadioButtonTimelineMode2);
+
+        jRadioButtonTimelineMode3.setText("Five minutes");
+        jRadioButtonTimelineMode3.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonTimelineMode3StateChanged(evt);
+            }
+        });
+        jMenuTimeline.add(jRadioButtonTimelineMode3);
+
+        jRadioButtonTimelineMode4.setText("All time");
+        jRadioButtonTimelineMode4.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonTimelineMode4StateChanged(evt);
+            }
+        });
+        jMenuTimeline.add(jRadioButtonTimelineMode4);
+
+        jMenuSettings.add(jMenuTimeline);
+
+        jMenuBar.add(jMenuSettings);
+
         setJMenuBar(jMenuBar);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -244,15 +318,17 @@ public class MainForm extends javax.swing.JFrame {
         if(resultsFile == null || !resultsFile.exists()) {
             return;
         }
+        this.setTitle(resultsFile.getPath());
         clearChart();
         ViewerThread viewerThread = new ViewerThread(this, resultsFile.getAbsolutePath());
-        WaitBox threadWaitBox = new WaitBox("Reading of file...");
+        WaitBox threadWaitBox = new WaitBox("Reading file...");
         threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         threadWaitBox.setVisible(true);
         threadWaitBox.start(viewerThread);
     }//GEN-LAST:event_jMenuItemOpenResultsActionPerformed
 
     private void jMenuItemCloseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCloseActionPerformed
+        this.setTitle(Help.DEFAULT_MAIN_FORM_TITLE);
         clearChart();
     }//GEN-LAST:event_jMenuItemCloseActionPerformed
 
@@ -276,7 +352,7 @@ public class MainForm extends javax.swing.JFrame {
 
     private void jMenuItemSaveBinFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveBinFileActionPerformed
         if(tmpResultsFileName == null || !Files.exists(Paths.get(tmpResultsFileName))) {
-            new MsgBox(this, "Notice", "No data to save!",
+            new MsgBox(this, "Notification", "No data to save!",
                 MsgBox.ACTION_OK).setVisible(true);
             return;
         }
@@ -300,6 +376,82 @@ public class MainForm extends javax.swing.JFrame {
         }        
     }//GEN-LAST:event_jMenuItemSaveBinFileActionPerformed
 
+    private void jRadioButtonTimelineMode1StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonTimelineMode1StateChanged
+        if(jRadioButtonTimelineMode1.isSelected())
+        {
+            GlobalVariables.g_TimelinePeriodMilisec = 60000;
+            jRadioButtonTimelineMode1.setEnabled(false);
+            jRadioButtonTimelineMode2.setSelected(false);
+            jRadioButtonTimelineMode2.setEnabled(true);
+            jRadioButtonTimelineMode3.setSelected(false);
+            jRadioButtonTimelineMode3.setEnabled(true);
+            jRadioButtonTimelineMode4.setSelected(false);
+            jRadioButtonTimelineMode4.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonTimelineMode1StateChanged
+
+    private void jRadioButtonTimelineMode2StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonTimelineMode2StateChanged
+        if(jRadioButtonTimelineMode2.isSelected())
+        {
+            GlobalVariables.g_TimelinePeriodMilisec = 120000;
+            jRadioButtonTimelineMode2.setEnabled(false);
+            jRadioButtonTimelineMode1.setSelected(false);
+            jRadioButtonTimelineMode1.setEnabled(true);
+            jRadioButtonTimelineMode3.setSelected(false);
+            jRadioButtonTimelineMode3.setEnabled(true);
+            jRadioButtonTimelineMode4.setSelected(false);
+            jRadioButtonTimelineMode4.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonTimelineMode2StateChanged
+
+    private void jRadioButtonTimelineMode3StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonTimelineMode3StateChanged
+        if(jRadioButtonTimelineMode3.isSelected())
+        {
+            GlobalVariables.g_TimelinePeriodMilisec = 300000;
+            jRadioButtonTimelineMode3.setEnabled(false);
+            jRadioButtonTimelineMode1.setSelected(false);
+            jRadioButtonTimelineMode1.setEnabled(true);
+            jRadioButtonTimelineMode2.setSelected(false);
+            jRadioButtonTimelineMode2.setEnabled(true);
+            jRadioButtonTimelineMode4.setSelected(false);
+            jRadioButtonTimelineMode4.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonTimelineMode3StateChanged
+
+    private void jRadioButtonTwoChartsStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonTwoChartsStateChanged
+        if(jRadioButtonTwoCharts.isSelected())
+        {
+            GlobalVariables.g_TwoChartsAreActivated = true;
+            jRadioButtonTwoCharts.setEnabled(false);
+            jRadioButtonOneChart.setSelected(false);
+            jRadioButtonOneChart.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonTwoChartsStateChanged
+
+    private void jRadioButtonOneChartStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonOneChartStateChanged
+        if(jRadioButtonOneChart.isSelected())
+        {
+            GlobalVariables.g_TwoChartsAreActivated = false;
+            jRadioButtonOneChart.setEnabled(false);
+            jRadioButtonTwoCharts.setSelected(false);
+            jRadioButtonTwoCharts.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonOneChartStateChanged
+
+    private void jRadioButtonTimelineMode4StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonTimelineMode4StateChanged
+        if(jRadioButtonTimelineMode4.isSelected())
+        {
+            GlobalVariables.g_TimelinePeriodMilisec = Integer.MAX_VALUE;
+            jRadioButtonTimelineMode4.setEnabled(false);
+            jRadioButtonTimelineMode1.setSelected(false);
+            jRadioButtonTimelineMode1.setEnabled(true);
+            jRadioButtonTimelineMode2.setSelected(false);
+            jRadioButtonTimelineMode2.setEnabled(true);
+            jRadioButtonTimelineMode3.setSelected(false);
+            jRadioButtonTimelineMode3.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonTimelineMode4StateChanged
+
     // Private variables
     private final FormConnectTo formConnectTo;
     private Process pinServerProcess;
@@ -309,6 +461,7 @@ public class MainForm extends javax.swing.JFrame {
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuBar jMenuBar;
+    private javax.swing.JMenu jMenuCharts;
     private javax.swing.JMenu jMenuFile;
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItemClose;
@@ -316,6 +469,14 @@ public class MainForm extends javax.swing.JFrame {
     private javax.swing.JMenuItem jMenuItemOpenApp;
     private javax.swing.JMenuItem jMenuItemOpenResults;
     private javax.swing.JMenuItem jMenuItemSaveBinFile;
+    private javax.swing.JMenu jMenuSettings;
+    private javax.swing.JMenu jMenuTimeline;
     private javax.swing.JPanel jPanel4Chart;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonOneChart;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonTimelineMode1;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonTimelineMode2;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonTimelineMode3;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonTimelineMode4;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonTwoCharts;
     // End of variables declaration//GEN-END:variables
 }

@@ -18,11 +18,13 @@ public class Help {
     public static final int MIN_PORT = 1024;
     public static final int MAX_PORT = 65536;
     public static final int USEC_IN_SEC = 1000000;
-    
+
+    public static final String DEFAULT_MAIN_FORM_TITLE = "MemoryAnalyzer";
+
     //Memory constants
     public static final int WIN_MB = 1<<20;//2^20
     public static final int LINUX_MB = 1000000;
-    
+
     //Error string constants
     public static final String ERR_UNKNOWN_OS = "ERR_UNKNOWN_OS";
     
