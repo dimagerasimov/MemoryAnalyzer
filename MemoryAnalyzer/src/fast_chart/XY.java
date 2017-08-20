@@ -9,11 +9,11 @@ package fast_chart;
  *
  * @author master
  */
-public class XY {
-    public double x;
-    public double y;
+public class XY<T> {
+    public T x;
+    public T y;
     
-    public XY(double x, double y) {
+    public XY(T x, T y) {
         this.x = x;
         this.y = y;
     }

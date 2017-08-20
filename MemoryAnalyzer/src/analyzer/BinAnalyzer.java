@@ -16,7 +16,8 @@ import fast_chart.XY;
 import static bintypes.BinfElement.GetMFreeAddress;
 import static bintypes.BinfElement.GetMFreeSize;
 import static bintypes.BinfElement.GetMFreeTime;
-import static crossplatform.Help.GetNumBytesInMb;
+import static crossplatform.Help.GetNumBytesInKB;
+import static crossplatform.Help.GetNumBytesInMB;
 
 /**
  *
@@ -26,14 +27,6 @@ public class BinAnalyzer {
     // Maximum points for graphic
     public final static int AVERAGE_NUMBER_POINTS = 250;
     
-    public static class BinAnalyzerResults
-    {
-        public String allMemoryUsedDescription;
-        public ArrayList<XY> allMemoryUsedPoints;
-        public String unfreedMemoryDescription;
-        public ArrayList<XY> unfreedMemoryPoints;
-    };
-
     public static BinAnalyzerResults MakeAnalyzeMFree(
             ArrayList<BinfElement> binfArray) {
         if(binfArray.isEmpty()) {
@@ -41,69 +34,112 @@ public class BinAnalyzer {
         }
         AllmemPreGraphicInfo allmemPreGraphicInfo =
                 new AllmemPreGraphicInfo();
-        ArrayList<XY> allmem_mas = GetAllMemoryPreGraphic(binfArray, allmemPreGraphicInfo);
+        ArrayList<XY<Long>> allmem_mas = GetAllMemoryPreGraphic(binfArray, allmemPreGraphicInfo);
         UnfreedPreGraphicInfo unfreedPreGraphicInfo =
                 new UnfreedPreGraphicInfo();
-        ArrayList<XY> unfreed_mas = GetUnfreedPreGraphic(allmemPreGraphicInfo,
+        ArrayList<XY<Long>> unfreed_mas = GetUnfreedPreGraphic(allmemPreGraphicInfo,
                 unfreedPreGraphicInfo);
         
-        // Make equals last values 
-        AlignmentXYArrayList(allmem_mas, unfreed_mas);
+        // Make equals last values
+        ArrayList<XY<Float>> repack_allmem_mas = RepackAndNormXYArrayList(allmem_mas);
+        ArrayList<XY<Float>> repack_unfreed_mas = RepackAndNormXYArrayList(unfreed_mas);
+        if(!repack_allmem_mas.isEmpty() && !repack_unfreed_mas.isEmpty()) {
+            AlignmentXYArrayLists(repack_allmem_mas, repack_unfreed_mas);
+        }
+
+        allmem_mas.clear();
+        unfreed_mas.clear();
 
         BinAnalyzerResults binAnalyzerResult = new BinAnalyzerResults();
-        binAnalyzerResult.allMemoryUsedDescription = String.format("%.3f", allmemPreGraphicInfo.freed_sum_abs) + " MB";
-        binAnalyzerResult.allMemoryUsedPoints = allmem_mas;
-        binAnalyzerResult.unfreedMemoryDescription = String.format("%.3f", unfreedPreGraphicInfo.unfreed_sum) + " MB";
-        binAnalyzerResult.unfreedMemoryPoints = unfreed_mas; 
+        binAnalyzerResult.allMemoryUsedDescription = GenerateDescription(allmemPreGraphicInfo.freed_sum_abs);
+        binAnalyzerResult.allMemoryUsedPoints = repack_allmem_mas;
+        binAnalyzerResult.unfreedMemoryDescription = GenerateDescription(unfreedPreGraphicInfo.unfreed_sum);
+        binAnalyzerResult.unfreedMemoryPoints = repack_unfreed_mas; 
         return binAnalyzerResult;
     }
+
+    public static class BinAnalyzerResults
+    {
+        public String allMemoryUsedDescription;
+        public ArrayList<XY<Float>> allMemoryUsedPoints;
+        public String unfreedMemoryDescription;
+        public ArrayList<XY<Float>> unfreedMemoryPoints;
+    };
     // My parameters for return
     private static class AllmemPreGraphicInfo {
-        double freed_sum_level;
-        double freed_sum_abs;
-        double max_time;
+        long freed_sum_level;
+        long freed_sum_abs;
+        long max_time;
         HashMap<Long, BinfElement> allmemHashMap;
     };
     // My parameters for return
     private static class UnfreedPreGraphicInfo {
-        double unfreed_sum;
+        long unfreed_sum;
     };
-    private static void AlignmentXYArrayList(ArrayList<XY> allmem_mas,
-            ArrayList<XY> unfreed_mas) {
+    
+    private static String GenerateDescription(long value) {
+        String result;
+        if(value < GetNumBytesInKB()) {
+            result = String.format("%.0f", (float)value) + " bytes";
+        }
+        else if(value < GetNumBytesInMB()) {
+            result = String.format("%.0f", (float)(value) / GetNumBytesInKB()) + " KB";
+        }
+        else {
+            result = String.format("%.3f", (float)(value) / GetNumBytesInMB()) + " MB";
+        }
+        return result;
+    }
+    private static ArrayList<XY<Float>> RepackAndNormXYArrayList(ArrayList<XY<Long>> list) {
+        float coefficientXToNorm = Help.USEC_IN_SEC;
+        float coefficientYToNorm = GetNumBytesInMB();
+        ArrayList<XY<Float>> repack_list = new ArrayList<>(list.size() + 1);
+        if(list.size() > 1)
+        {
+            for(XY<Long> xy : list)
+            {
+                repack_list.add(new XY<>(
+                    (float)(xy.x / coefficientXToNorm), (float)(xy.y / coefficientYToNorm)));
+
+            }
+        }
+        return repack_list;
+    }
+    private static void AlignmentXYArrayLists(ArrayList<XY<Float>> allmem_mas,
+            ArrayList<XY<Float>> unfreed_mas) {
         if(allmem_mas.isEmpty() || unfreed_mas.isEmpty()) {
             return;
         }
         // Make equals last values
         if(allmem_mas.get(allmem_mas.size() - 1).x
                 > unfreed_mas.get(unfreed_mas.size() - 1).x) {
-            unfreed_mas.add(new XY(allmem_mas.get(allmem_mas.size() - 1).x + TIME_EPS,
+            unfreed_mas.add(new XY(allmem_mas.get(allmem_mas.size() - 1).x,
                 unfreed_mas.get(unfreed_mas.size() - 1).y));
         }
         allmem_mas.set(allmem_mas.size() - 1, new XY(unfreed_mas.get(unfreed_mas.size() - 1).x,
                 unfreed_mas.get(unfreed_mas.size() - 1).y));
     }
-    private static ArrayList<XY> GetAllMemoryPreGraphic(ArrayList<BinfElement> binfArray,
+    private static ArrayList<XY<Long>> GetAllMemoryPreGraphic(ArrayList<BinfElement> binfArray,
             AllmemPreGraphicInfo allmemPreGraphicInfo) {
         int tmp_count;
-        long tmp_long_key;
-        double tmp_sum, value_sum;
-        double current_time, tmp_time, step_graphic_time;
+        long tmp_long_key, tmp_sum, value_sum;
+        long current_time, tmp_time, step_graphic_time;
         // IMPORTANT!!!!!!!!!
-        double freed_sum_level = 0.0;
-        double freed_sum_abs = 0.0;
+        long freed_sum_level = 0;
+        long freed_sum_abs = 0;
         // IMPORTANT
         /////////////
         BinfElement retBinfElement;
         HashMap<Long, BinfElement> allmemHashMap = new HashMap(Help.WIN_MB);
         // Allocate memory
-        ArrayList<XY> allmem_mas = new ArrayList(AVERAGE_NUMBER_POINTS);
+        ArrayList<XY<Long>> allmem_mas = new ArrayList(AVERAGE_NUMBER_POINTS);
 
-        double startTimeToAdd = (double)GetMFreeTime(
-                binfArray.get(binfArray.size() - 1)).getValue() / Help.USEC_IN_SEC
-                - GlobalVariables.g_TimelinePeriodMilisec / 1000.0;
-        if(startTimeToAdd <= 0.0)
+        long startTimeToAdd = GetMFreeTime(
+                binfArray.get(binfArray.size() - 1)).getValue()
+                - (long)(GlobalVariables.g_TimelinePeriodMilisec) * 1000;
+        if(startTimeToAdd <= 0)
         {
-            startTimeToAdd = 0.0;
+            startTimeToAdd = 0;
             //First value
             allmem_mas.add(new XY(startTimeToAdd, freed_sum_level));
         }
@@ -114,7 +150,7 @@ public class BinAnalyzer {
                 retBinfElement = allmemHashMap.put(tmp_long_key, tmpBinfElement);
                 value_sum = GetMFreeSize(tmpBinfElement).getValue();
                 if(value_sum != -1) {
-                    freed_sum_abs += (double)value_sum / GetNumBytesInMb();
+                    freed_sum_abs += value_sum;
                 }
                 else {
                     if(retBinfElement == null) {
@@ -124,32 +160,30 @@ public class BinAnalyzer {
                     value_sum = -GetMFreeSize(retBinfElement).getValue();
                     allmemHashMap.remove(tmp_long_key);
                 }
-                freed_sum_level += (double)value_sum / GetNumBytesInMb();
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
+                freed_sum_level += value_sum;
+                current_time = GetMFreeTime(tmpBinfElement).getValue();
                 if(current_time > startTimeToAdd)
                 {
                     allmem_mas.add(new XY(current_time, freed_sum_level));
                 }
             }
         } else {
-            double timeToAverage = GlobalVariables.g_TimelinePeriodMilisec / 1000.0;
-            if(startTimeToAdd == 0.0)
+            long timeToAverage = GlobalVariables.g_TimelinePeriodMilisec * 1000;
+            if(startTimeToAdd == 0)
             {
-                timeToAverage = (double)GetMFreeTime(binfArray.get(
-                    binfArray.size() - 1)).getValue() / Help.USEC_IN_SEC;
+                timeToAverage = GetMFreeTime(binfArray.get(binfArray.size() - 1)).getValue();
             }
-            step_graphic_time = timeToAverage / AVERAGE_NUMBER_POINTS;
+            step_graphic_time = (long)(timeToAverage / AVERAGE_NUMBER_POINTS);
             tmp_count = 0;
-            tmp_time = 0.0;
-            tmp_sum = 0.0;
-            current_time = 0.0;
+            tmp_sum = 0;
+            tmp_time = current_time = 0;
             for(BinfElement tmpBinfElement : binfArray)
             {
                 tmp_long_key = GetMFreeAddress(tmpBinfElement).getValue();
                 retBinfElement = allmemHashMap.put(tmp_long_key, tmpBinfElement);
                 value_sum = GetMFreeSize(tmpBinfElement).getValue();
                 if(value_sum != -1) {
-                    freed_sum_abs += (double)value_sum / GetNumBytesInMb();
+                    freed_sum_abs += value_sum;
                 }
                 else {
                     if(retBinfElement == null) {
@@ -159,16 +193,16 @@ public class BinAnalyzer {
                     value_sum = -GetMFreeSize(retBinfElement).getValue();
                     allmemHashMap.remove(tmp_long_key);
                 }
-                freed_sum_level += (double)value_sum / GetNumBytesInMb();
+                freed_sum_level += value_sum;
                 tmp_sum += freed_sum_level;
                 tmp_count += 1;
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
+                current_time = GetMFreeTime(tmpBinfElement).getValue();
                 if((current_time - tmp_time > step_graphic_time) && (current_time > startTimeToAdd)) {
                     tmp_time += step_graphic_time * (int)(current_time - tmp_time) / step_graphic_time;
-                    allmem_mas.add(new XY((current_time + tmp_time) / 2.0,
+                    allmem_mas.add(new XY((current_time + tmp_time) / 2,
                             tmp_sum / tmp_count));
                     tmp_time += step_graphic_time;
-                    tmp_sum = 0.0;
+                    tmp_sum = 0;
                     tmp_count = 0;
                 }
             }
@@ -181,16 +215,16 @@ public class BinAnalyzer {
         
         return allmem_mas;
     }
-    private static ArrayList<XY> GetUnfreedPreGraphic(AllmemPreGraphicInfo allmemPreGraphicInfo,
+    private static ArrayList<XY<Long>> GetUnfreedPreGraphic(AllmemPreGraphicInfo allmemPreGraphicInfo,
             UnfreedPreGraphicInfo unfreedPreGraphicInfo) {
-        double value_sum;
-        double current_time, tmp_time, step_graphic_time;
+        long value_sum;
+        long current_time, tmp_time, step_graphic_time;
         // IMPORTANT
-        double unfreed_sum = 0.0;
+        long unfreed_sum = 0;
         // Extract usable info from AllmemPreGraphicInfo
         HashMap<Long, BinfElement> allmemHashMap = allmemPreGraphicInfo.allmemHashMap;
         // Allocate memory
-        ArrayList<XY> unfreed_mas = new ArrayList(AVERAGE_NUMBER_POINTS);
+        ArrayList<XY<Long>> unfreed_mas = new ArrayList(AVERAGE_NUMBER_POINTS);
         // Get values of collection that put their in TreeMap
         Collection<BinfElement> allmemCollection = allmemHashMap.values();
         TreeMap<Long, BinfElement> unfreedMap = new TreeMap();
@@ -199,19 +233,19 @@ public class BinAnalyzer {
         }
         Collection<BinfElement> unfreedCollection = unfreedMap.values();
         
-        double startTimeToAdd = allmemPreGraphicInfo.max_time / Help.USEC_IN_SEC
-                - GlobalVariables.g_TimelinePeriodMilisec / 1000.0;
-        if(startTimeToAdd <= 0.0)
+        long startTimeToAdd = allmemPreGraphicInfo.max_time
+                - (long)(GlobalVariables.g_TimelinePeriodMilisec) * 1000;
+        if(startTimeToAdd <= 0)
         {
-            startTimeToAdd = 0.0;
+            startTimeToAdd = 0;
             // First value
             unfreed_mas.add(new XY(startTimeToAdd, unfreed_sum));
         }
         if(unfreedCollection.size() < AVERAGE_NUMBER_POINTS) {
             for( BinfElement tmpBinfElement : unfreedCollection ) {
-                value_sum = (double)GetMFreeSize(tmpBinfElement).getValue() / GetNumBytesInMb();
+                value_sum = GetMFreeSize(tmpBinfElement).getValue();
                 unfreed_sum += value_sum;
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
+                current_time = GetMFreeTime(tmpBinfElement).getValue();
                 if(current_time > startTimeToAdd)
                 {
                     unfreed_mas.add(new XY(current_time, unfreed_sum));
@@ -219,21 +253,21 @@ public class BinAnalyzer {
             }
         }
         else {
-            double timeToAverage = GlobalVariables.g_TimelinePeriodMilisec / 1000.0;
-            if(startTimeToAdd == 0.0)
+            long timeToAverage = GlobalVariables.g_TimelinePeriodMilisec * 1000;
+            if(startTimeToAdd == 0)
             {
-                timeToAverage = allmemPreGraphicInfo.max_time / Help.USEC_IN_SEC;
+                timeToAverage = allmemPreGraphicInfo.max_time;
             }
             step_graphic_time = timeToAverage / AVERAGE_NUMBER_POINTS;
-            tmp_time = 0.0;
+            tmp_time = 0;
             for( BinfElement tmpBinfElement : unfreedCollection ) {
-                value_sum = (double)GetMFreeSize(tmpBinfElement).getValue() / GetNumBytesInMb();
+                value_sum = GetMFreeSize(tmpBinfElement).getValue();
                 unfreed_sum += value_sum;
-                current_time = (double)GetMFreeTime(tmpBinfElement).getValue() / Help.USEC_IN_SEC;
+                current_time = GetMFreeTime(tmpBinfElement).getValue();
 
                 if((current_time - tmp_time > step_graphic_time) && (current_time > startTimeToAdd)) {
                     tmp_time += step_graphic_time * (int)(current_time - tmp_time) / step_graphic_time;
-                    unfreed_mas.add(new XY((current_time + tmp_time) / 2.0, unfreed_sum));
+                    unfreed_mas.add(new XY((current_time + tmp_time) / 2, unfreed_sum));
                     tmp_time += step_graphic_time;
                 }
             }
@@ -242,8 +276,5 @@ public class BinAnalyzer {
         
         return unfreed_mas;
     }
-    
-    // Private variables
-    // My time offset for graphic
-    private final static double TIME_EPS = (1.0 / Help.USEC_IN_SEC) / 8.0;
+
 }

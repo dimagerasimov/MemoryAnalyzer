@@ -22,10 +22,12 @@ public class FastChart extends JPanel{
         super();
         
         final int TITLE_FONT_SIZE = 16;
+        final int NOTHING_TO_SHOW_FONT_SIZE = 14;
         final int AXIS_FONT_SIZE = 12;
         final int DESCRIPTION_FONT_SIZE = 15;
         
         titleFont = new Font(Font.DIALOG, Font.BOLD, TITLE_FONT_SIZE);
+        nothingToShowFont = new Font(Font.DIALOG, Font.BOLD, NOTHING_TO_SHOW_FONT_SIZE);
         axisFont = new Font(Font.DIALOG, Font.PLAIN, AXIS_FONT_SIZE);
         descriptionFont = new Font(Font.DIALOG, Font.PLAIN, DESCRIPTION_FONT_SIZE);
     
@@ -33,6 +35,10 @@ public class FastChart extends JPanel{
         tl = new TextLayout("Aa", titleFont, new FontRenderContext(null, true, true));
         titleFontWidthPx =  (float)tl.getBounds().getWidth() / 2.0f;
         titleFontHeightPx = (float)tl.getBounds().getHeight();
+
+        tl = new TextLayout(NOTHING_TO_SHOW_MSG, nothingToShowFont, new FontRenderContext(null, true, true));
+        nothingToShowFontWidthPx =  (float)tl.getBounds().getWidth() / NOTHING_TO_SHOW_MSG.length();
+        nothingToShowFontHeightPx = (float)tl.getBounds().getHeight();
 
         tl = new TextLayout("0", axisFont, new FontRenderContext(null, true, true));
         axisFontWidthPx = (float)tl.getBounds().getWidth();
@@ -45,10 +51,11 @@ public class FastChart extends JPanel{
         clear();
     }
     
-    public FastChart(Font titleFont, Font axisFont, Font descriptionFont) {
+    public FastChart(Font titleFont, Font nothingToShowFont, Font axisFont, Font descriptionFont) {
         super();
 
         this.titleFont = titleFont;
+        this.nothingToShowFont = nothingToShowFont;
         this.axisFont = axisFont;
         this.descriptionFont = descriptionFont;
         
@@ -57,6 +64,10 @@ public class FastChart extends JPanel{
         titleFontWidthPx =  (float)tl.getBounds().getWidth() / 2.0f;
         titleFontHeightPx = (float)tl.getBounds().getHeight();
 
+        tl = new TextLayout("Aa", nothingToShowFont, new FontRenderContext(null, true, true));
+        nothingToShowFontWidthPx =  (float)tl.getBounds().getWidth() / 2.0f;
+        nothingToShowFontHeightPx = (float)tl.getBounds().getHeight();
+        
         tl = new TextLayout("0", axisFont, new FontRenderContext(null, true, true));
         axisFontWidthPx = (float)tl.getBounds().getWidth();
         axisFontHeightPx = (float)tl.getBounds().getHeight();
@@ -114,68 +125,65 @@ public class FastChart extends JPanel{
         return true;
     }
     
-    public boolean sync(ArrayList<XY>... points) {         
+    public boolean sync(ArrayList<XY<Float>>... points) {         
         if(points == null || points.length < 1) {
             clear();
             return false;
         }
-        minX = Double.POSITIVE_INFINITY;
-        maxX = Double.NEGATIVE_INFINITY;
-        minY = Double.POSITIVE_INFINITY;
-        maxY = Double.NEGATIVE_INFINITY;
         
+        limits = new ChartLimits(DEFAULT_CHART_LIMITS);
         colors = new ArrayList();
         graphics = new ArrayList();
         descriptions = new ArrayList();
-        for (ArrayList<XY> arrayXY : points) {
+        for (ArrayList<XY<Float>> arrayXY : points) {
             colors.add(Color.getHSBColor((float)Math.random(),
                     0.3f + (float)Math.random() * 0.5f, 0.3f + (float)Math.random() * 0.5f));
             graphics.add(arrayXY);
             descriptions.add("Chart" + (descriptions.size() + 1));
             
-            XY tmp;
+            XY<Float> tmp;
             for (int j = 0; j < arrayXY.size(); j++) {
                 tmp = arrayXY.get(j);
-                if(tmp.x < minX) {
-                    minX = tmp.x;
+                if(tmp.x < limits.minX) {
+                    limits.minX = tmp.x;
                 }
-                if(tmp.x > maxX) {
-                    maxX = tmp.x;
+                if(tmp.x > limits.maxX) {
+                    limits.maxX = tmp.x;
                 }
-                if(tmp.y < minY) {
-                    minY = tmp.y;
+                if(tmp.y < limits.minY) {
+                    limits.minY = tmp.y;
                 }
-                if(tmp.y > maxY) {
-                    maxY = tmp.y;
+                if(tmp.y > limits.maxY) {
+                    limits.maxY = tmp.y;
                 }
             }
         }
         return true;
     }
 
+    public ChartLimits getLimits() {
+        return new ChartLimits(limits);
+    }
+    
     public final void clear() {
         axisFormatValueX = "%.3f";
         axisFormatValueY = "%.3f";
         
         areaFlag = false;
         title = "Fast Chart";   
-        
-        minX = -1.0e-10;
-        maxX = 1.0e-10;
-        minY = -1.0e-10;
-        maxY= 1.0e-10;
+        limits = new ChartLimits(DEFAULT_CHART_LIMITS);
         
         colors = null;
         graphics = null;
         descriptions = null;
     }
     
-    private double convertXToScreenPx(int width, double x) {
-        return (x - minX) / (maxX - minX) * width;
+    private float convertXToScreenPx(int width, float x) {
+        return (x - limits.minX) / (limits.maxX - limits.minX) * width;
     }
     
-    private double convertYToScreenPx(int height, double y) {
-        return (1.0 - (y - minY) / (maxY - minY)) * height;
+    private float convertYToScreenPx(int height, float y) {
+        return (1.0f - (y - limits.minY) / (limits.maxY - limits.minY)) * height;
     }
     
     private void plot(Graphics g, int width, int height,
@@ -186,8 +194,12 @@ public class FastChart extends JPanel{
         final int size = graphics.size();
         for(int i = 0; i < size; i++) {
             Color color = colors.get(i);
-            ArrayList<XY> points = graphics.get(i);
-            
+            ArrayList<XY<Float>> points = graphics.get(i);
+            if(points.size() < 2)
+            {
+                //We can't draw what doesn't exist
+                continue;
+            }
             int[] xs = new int[points.size()]; 
             for(int j = 0; j < xs.length; j++) {
                 xs[j] = paddingLeft + (int)convertXToScreenPx(widthOfPlot, points.get(j).x);
@@ -211,8 +223,8 @@ public class FastChart extends JPanel{
         final int size = graphics.size();
         for(int i = 0; i < size; i++) {
             Color color = colors.get(i);
-            ArrayList<XY> points = graphics.get(i);
-            if(points.isEmpty())
+            ArrayList<XY<Float>> points = graphics.get(i);
+            if(points.size() < 2)
             {
                 //We can't draw what doesn't exist
                 continue;
@@ -241,6 +253,13 @@ public class FastChart extends JPanel{
         g.setFont(titleFont);
         g.drawString(title, (int)(x + (lengthX - getTitleWordWidth()) / 2.0f),
                 (int)(y + (lengthY + titleFontHeightPx) / 2.0f));
+    }
+        
+    private void showNothingToShowMsg(Graphics g, int x, int y, int lengthX, int lengthY) {
+        g.setColor(Color.RED);
+        g.setFont(nothingToShowFont);
+        g.drawString(NOTHING_TO_SHOW_MSG, (int)(x + (lengthX - getNothingToShowWordWidth()) / 2.0f),
+                (int)(y + (lengthY + nothingToShowFontHeightPx) / 2.0f));
     }
     
     private void showDecription(Graphics g, int x, int y, int lengthX, int lengthY,
@@ -276,20 +295,24 @@ public class FastChart extends JPanel{
     private float getTitleWordWidth() {
         return title.length() * titleFontWidthPx;
     }
-        
-    private String getWordAxisX(double value) {
+
+    private float getNothingToShowWordWidth() {
+        return NOTHING_TO_SHOW_MSG.length() * nothingToShowFontWidthPx;
+    }
+
+    private String getWordAxisX(float value) {
         return String.format(axisFormatValueX, value);
     }
     
-    private float getWordWidthAxisX(double value) {
+    private float getWordWidthAxisX(float value) {
         return getWordAxisX(value).length() * axisFontWidthPx;
     }
     
-    private String getWordAxisY(double value) {
+    private String getWordAxisY(float value) {
         return String.format(axisFormatValueY, value);
     }
     
-    private float getWordWidthAxisY(double value) {
+    private float getWordWidthAxisY(float value) {
         return getWordAxisY(value).length() * axisFontWidthPx;
     }
     
@@ -307,7 +330,7 @@ public class FastChart extends JPanel{
         
         // Coefficients scaling of labels
         final int NUM_AXIS_X_LABELS = (int)Math.ceil((width - (paddingLeft + paddingRight))
-                / (Math.max(getWordWidthAxisX(minX), getWordWidthAxisX(maxX)) * 3));
+                / (Math.max(getWordWidthAxisX(limits.minX), getWordWidthAxisX(limits.maxX)) * 3));
         final int NUM_AXIS_Y_LABELS = (int)Math.ceil((height - (paddingBottom + paddingTop))
                 / (axisFontHeightPx * 6));
         
@@ -320,38 +343,42 @@ public class FastChart extends JPanel{
     private void showAxisX(Graphics g, int width, int height,
             int paddingLeft, int paddingRight, int paddingBottom, int paddingTop, int numLabels) {
         final int widthOfPlot = width - (paddingLeft + paddingRight);
-        float step = (float)((maxX - minX) / numLabels);
-        final float stepInPx = (float)convertXToScreenPx(widthOfPlot, minX + step);
+        float step = (limits.maxX - limits.minX) / numLabels;
+        final float stepInPx = (float)convertXToScreenPx(widthOfPlot, limits.minX + step);
         step = Math.abs(step);
         
         final int labelLocationY = (int)(height - (0.5f * paddingBottom) + axisFontHeightPx / 2.0f);
         float labelLocationX = paddingLeft;
         
-        float sum = (float)minX;
-        for(int i = 0; i < numLabels + 1; i++) {
-            g.drawString(getWordAxisX(sum),
-                    (int)(labelLocationX - getWordWidthAxisX(sum) / 2.0f), labelLocationY);
-            sum += step;
-            labelLocationX += stepInPx;
+        float sum = limits.minX;
+        if(!limits.equals(DEFAULT_CHART_LIMITS)) {
+            for(int i = 0; i < numLabels + 1; i++) {
+                g.drawString(getWordAxisX(sum),
+                        (int)(labelLocationX - getWordWidthAxisX(sum) / 2.0f), labelLocationY);
+                sum += step;
+                labelLocationX += stepInPx;
+            }
         }
     }
     
     private void showAxisY(Graphics g, int width, int height,
             int paddingLeft, int paddingRight, int paddingBottom, int paddingTop, int numLabels) {
         final int heightOfPlot = height - (paddingBottom + paddingTop);
-        float step = (float)((maxY - minY) / numLabels);
-        final float stepInPx = (float)(heightOfPlot - convertYToScreenPx(heightOfPlot, minY + step));
+        float step = (limits.maxY - limits.minY) / numLabels;
+        final float stepInPx = (float)(heightOfPlot - convertYToScreenPx(heightOfPlot, limits.minY + step));
         step = Math.abs(step);
         
         final int labelLocationX = (int)(paddingLeft / 2.0f);
         float labelLocationY = height - paddingBottom + axisFontHeightPx / 2.0f;
                 
-        float sum = (float)minY;
-        for(int i = 0; i < numLabels + 1; i++) {
-            g.drawString(getWordAxisY(sum),
-                    (int)(labelLocationX - getWordWidthAxisY(sum) / 2.0f), (int)labelLocationY);
-            sum += step;
-            labelLocationY -= stepInPx;
+        float sum = limits.minY;
+        if(!limits.equals(DEFAULT_CHART_LIMITS)) {
+            for(int i = 0; i < numLabels + 1; i++) {
+                g.drawString(getWordAxisY(sum),
+                        (int)(labelLocationX - getWordWidthAxisY(sum) / 2.0f), (int)labelLocationY);
+                sum += step;
+                labelLocationY -= stepInPx;
+            }
         }
     }
     
@@ -368,12 +395,11 @@ public class FastChart extends JPanel{
         int paddingTop = (int)(0.05f * height);
         
         int tmp;
-        
-        tmp = (int)(1.5f * Math.max(getWordWidthAxisY(minY), getWordWidthAxisY(maxY)));
+        tmp = (int)(1.5f * Math.max(getWordWidthAxisY(limits.minY), getWordWidthAxisY(limits.maxY)));
         if(paddingLeft < tmp) {
             paddingLeft = tmp;
         }
-        tmp = (int)(2.5f * Math.max(getWordWidthAxisY(minY), getWordWidthAxisY(maxY)));
+        tmp = (int)(2.5f * Math.max(getWordWidthAxisY(limits.minY), getWordWidthAxisY(limits.maxY)));
         if(paddingRight < tmp) {
             paddingRight = tmp;
         }   
@@ -400,31 +426,62 @@ public class FastChart extends JPanel{
         showAxises(g, width, height, paddingLeft, paddingRight,
                 paddingBottom, paddingTop);
         showTitle(g, paddingLeft, 0, width - (paddingLeft + paddingRight), paddingTop);
+        if(limits.equals(DEFAULT_CHART_LIMITS))
+        {
+            showNothingToShowMsg(g, paddingLeft, (height - paddingTop) / 2,
+                    width - (paddingLeft + paddingRight), paddingTop);
+        }
     }
+    
+    public static class ChartLimits {
+        public float minX;
+        public float maxX;
+        public float minY;
+        public float maxY;
+        
+        ChartLimits(float minX, float maxX, float minY, float maxY) {
+            this.minX = minX;
+            this.maxX = maxX;
+            this.minY = minY;
+            this.maxY = maxY;
+        }
+        ChartLimits(ChartLimits obj) {
+            this.minX = obj.minX;
+            this.maxX = obj.maxX;
+            this.minY = obj.minY;
+            this.maxY = obj.maxY;
+        }
+        boolean equals(ChartLimits obj) {
+            return (minX == obj.minX) && (maxX == obj.maxX)
+                    && (minY == obj.minY) && (maxY == obj.maxY);
+        }
+    };
     
     private final float titleFontWidthPx;
     private final float titleFontHeightPx;
+    private final float nothingToShowFontWidthPx;
+    private final float nothingToShowFontHeightPx;
     private final float axisFontWidthPx;
     private final float axisFontHeightPx;
     private final float descriptionFontWidthPx;
     private final float descriptionFontHeightPx;
     
     private final Font titleFont;
+    private final Font nothingToShowFont;
     private final Font axisFont;
     private final Font descriptionFont;
 
     private boolean areaFlag;    
-
-    private double minX;
-    private double maxX;
-    private double minY;
-    private double maxY;
+    private static final String NOTHING_TO_SHOW_MSG = "nothing to show";
+    private static final ChartLimits DEFAULT_CHART_LIMITS = new ChartLimits(
+        Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY);
+    private ChartLimits limits;
 
     private String title;
     private String axisFormatValueX;
     private String axisFormatValueY;
 
     private ArrayList<Color> colors;
-    private ArrayList<ArrayList<XY>> graphics;
+    private ArrayList<ArrayList<XY<Float>>> graphics;
     private ArrayList<String> descriptions;
 }

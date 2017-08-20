@@ -22,6 +22,8 @@ public class Help {
     public static final String DEFAULT_MAIN_FORM_TITLE = "MemoryAnalyzer";
 
     //Memory constants
+    public static final int WIN_KB = 1<<10;//2^10
+    public static final int LINUX_KB = 1000;
     public static final int WIN_MB = 1<<20;//2^20
     public static final int LINUX_MB = 1000000;
 
@@ -35,7 +37,22 @@ public class Help {
         }
         return os_name;
     }
-    public static int GetNumBytesInMb() {
+    public static int GetNumBytesInKB() {
+        String myOS = GetOS();
+        if(myOS == null)
+            { return WIN_KB; }
+        
+        switch (myOS) {
+            case "Linux":
+                return LINUX_KB;
+            case "Windows":
+                return WIN_KB;
+            default:
+                //standard JEDEC 100B.01 
+                return WIN_KB;
+        }
+    }
+        public static int GetNumBytesInMB() {
         String myOS = GetOS();
         if(myOS == null)
             { return WIN_MB; }

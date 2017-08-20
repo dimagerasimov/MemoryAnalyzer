@@ -52,34 +52,65 @@ public class MainForm extends javax.swing.JFrame {
         }
         // Init chooser
         initResultsChooser();
-        // Initialization current chart as null
-        chart = null;
+        // Initialization charts as null
+        chart1 = chart2 = null;
         tmpResultsFileName = null;
         // Create special form for connection
         formConnectTo = new FormConnectTo(this, pinServerProcess != null);
         setCenterLocation();
     }
+   
+    private static void addChartToPanel(javax.swing.JPanel jPanel, FastChart newChart) {
+        if(jPanel != null && newChart != null) {
+            newChart.setSize(jPanel.getSize());
+            // If chart already was on a panel then remove it 
+            jPanel.removeAll();
+            // Revalidate a panel
+            jPanel.revalidate();
+            // Add new chart on a panel
+            jPanel.add(newChart);
+        }
+    }
     
-    public void updateChart(FastChart newChart) {
-        chart = newChart;
-        chart.setSize(jPanel4Chart.getSize());
-        // If chart already was on a panel then remove it 
-        jPanel4Chart.removeAll();
-        // Revalidate a panel
-        jPanel4Chart.revalidate();
-        // Add new chart on a panel
-        jPanel4Chart.add(chart);
+    public void addChartToPanel1(FastChart newChart) {
+        chart1 = newChart;
+        addChartToPanel(jPanelChart1, chart1);
+    }
+   
+    public void addChartToPanel2(FastChart newChart) {
+        chart2 = newChart;
+        addChartToPanel(jPanelChart2, chart2);
+    }
+    
+    private static void clearChart(javax.swing.JPanel jPanel) {
+        if(jPanel != null) {
+            jPanel.removeAll();
+            jPanel.revalidate();
+        }
+    }
+    
+    public void clearChart1() {
+        chart1 = null;
+        clearChart(jPanelChart1);
+    }
+    
+    public void clearChart2() {
+        chart2 = null;
+        clearChart(jPanelChart2);
+    }
+    
+    public void initCharts() {
+        clearChart1();
+        clearChart2();
         repaint();
     }
     
-    public void clearChart() {
+    public void resetFormForNewAnalyze() {
+        setTitle(Help.DEFAULT_MAIN_FORM_TITLE);
         deleteTmpResultsFile();
-        chart = null;
-        jPanel4Chart.removeAll();
-        jPanel4Chart.revalidate();
-        repaint();
+        initCharts();
     }
-
+    
     public String getTmpResultsFileName() {
         tmpResultsFileName = Help.GetBinaryResultsPath();
         return tmpResultsFileName;
@@ -129,7 +160,8 @@ public class MainForm extends javax.swing.JFrame {
     private void initComponents() {
 
         jMenuItem1 = new javax.swing.JMenuItem();
-        jPanel4Chart = new javax.swing.JPanel();
+        jPanelChart1 = new javax.swing.JPanel();
+        jPanelChart2 = new javax.swing.JPanel();
         jMenuBar = new javax.swing.JMenuBar();
         jMenuFile = new javax.swing.JMenu();
         jMenuItemOpenApp = new javax.swing.JMenuItem();
@@ -166,17 +198,30 @@ public class MainForm extends javax.swing.JFrame {
             }
         });
 
-        jPanel4Chart.setPreferredSize(new java.awt.Dimension(700, 450));
+        jPanelChart1.setPreferredSize(new java.awt.Dimension(700, 450));
 
-        javax.swing.GroupLayout jPanel4ChartLayout = new javax.swing.GroupLayout(jPanel4Chart);
-        jPanel4Chart.setLayout(jPanel4ChartLayout);
-        jPanel4ChartLayout.setHorizontalGroup(
-            jPanel4ChartLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+        javax.swing.GroupLayout jPanelChart1Layout = new javax.swing.GroupLayout(jPanelChart1);
+        jPanelChart1.setLayout(jPanelChart1Layout);
+        jPanelChart1Layout.setHorizontalGroup(
+            jPanelChart1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 600, Short.MAX_VALUE)
         );
-        jPanel4ChartLayout.setVerticalGroup(
-            jPanel4ChartLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+        jPanelChart1Layout.setVerticalGroup(
+            jPanelChart1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 225, Short.MAX_VALUE)
+        );
+
+        jPanelChart2.setPreferredSize(new java.awt.Dimension(700, 450));
+
+        javax.swing.GroupLayout jPanelChart2Layout = new javax.swing.GroupLayout(jPanelChart2);
+        jPanelChart2.setLayout(jPanelChart2Layout);
+        jPanelChart2Layout.setHorizontalGroup(
+            jPanelChart2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 0, Short.MAX_VALUE)
+        );
+        jPanelChart2Layout.setVerticalGroup(
+            jPanelChart2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 225, Short.MAX_VALUE)
         );
 
         jMenuFile.setText("File");
@@ -253,7 +298,7 @@ public class MainForm extends javax.swing.JFrame {
         });
         jMenuTimeline.add(jRadioButtonTimelineMode3);
 
-        jRadioButtonTimelineMode4.setText("All time");
+        jRadioButtonTimelineMode4.setText("Last hour");
         jRadioButtonTimelineMode4.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 jRadioButtonTimelineMode4StateChanged(evt);
@@ -321,11 +366,15 @@ public class MainForm extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel4Chart, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
+            .addComponent(jPanelChart2, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
+            .addComponent(jPanelChart1, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel4Chart, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanelChart1, javax.swing.GroupLayout.DEFAULT_SIZE, 225, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanelChart2, javax.swing.GroupLayout.DEFAULT_SIZE, 225, Short.MAX_VALUE))
         );
 
         pack();
@@ -350,8 +399,10 @@ public class MainForm extends javax.swing.JFrame {
         if(resultsFile == null || !resultsFile.exists()) {
             return;
         }
-        this.setTitle(resultsFile.getPath());
-        clearChart();
+ 
+        resetFormForNewAnalyze();
+        setTitle(resultsFile.getPath());
+ 
         ViewerThread viewerThread = new ViewerThread(this, resultsFile.getAbsolutePath());
         WaitBox threadWaitBox = new WaitBox("Reading file...");
         threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -360,13 +411,15 @@ public class MainForm extends javax.swing.JFrame {
     }//GEN-LAST:event_jMenuItemOpenResultsActionPerformed
 
     private void jMenuItemCloseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCloseActionPerformed
-        this.setTitle(Help.DEFAULT_MAIN_FORM_TITLE);
-        clearChart();
+        resetFormForNewAnalyze();
     }//GEN-LAST:event_jMenuItemCloseActionPerformed
 
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
-        if(chart != null) {
-            chart.setSize(jPanel4Chart.getSize());
+        if(chart1 != null) {
+            chart1.setSize(jPanelChart1.getSize());
+        }
+        if(chart2 != null) {
+            chart2.setSize(jPanelChart2.getSize());
         }
     }//GEN-LAST:event_formComponentResized
 
@@ -457,6 +510,8 @@ public class MainForm extends javax.swing.JFrame {
             jRadioButtonTwoCharts.setEnabled(false);
             jRadioButtonOneChart.setSelected(false);
             jRadioButtonOneChart.setEnabled(true);
+            initCharts();
+            jPanelChart2.setVisible(true);
         }
     }//GEN-LAST:event_jRadioButtonTwoChartsStateChanged
 
@@ -467,13 +522,15 @@ public class MainForm extends javax.swing.JFrame {
             jRadioButtonOneChart.setEnabled(false);
             jRadioButtonTwoCharts.setSelected(false);
             jRadioButtonTwoCharts.setEnabled(true);
+            initCharts();
+            jPanelChart2.setVisible(false);
         }
     }//GEN-LAST:event_jRadioButtonOneChartStateChanged
 
     private void jRadioButtonTimelineMode4StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonTimelineMode4StateChanged
         if(jRadioButtonTimelineMode4.isSelected())
         {
-            GlobalVariables.g_TimelinePeriodMilisec = Integer.MAX_VALUE;
+            GlobalVariables.g_TimelinePeriodMilisec = 3600000;
             jRadioButtonTimelineMode4.setEnabled(false);
             jRadioButtonTimelineMode1.setSelected(false);
             jRadioButtonTimelineMode1.setEnabled(true);
@@ -497,7 +554,7 @@ public class MainForm extends javax.swing.JFrame {
     private void jRadioButtonAreaChartStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonAreaChartStateChanged
         if(jRadioButtonAreaChart.isSelected())
         {
-            GlobalVariables.g_ChartsAreaFlag = false;
+            GlobalVariables.g_ChartsAreaFlag = true;
             jRadioButtonAreaChart.setEnabled(false);
             jRadioButtonLineChart.setSelected(false);
             jRadioButtonLineChart.setEnabled(true);
@@ -508,7 +565,8 @@ public class MainForm extends javax.swing.JFrame {
     private final FormConnectTo formConnectTo;
     private Process pinServerProcess;
     private JFileChooser resultsChooser;
-    private FastChart chart;
+    private FastChart chart1;
+    private FastChart chart2;
     private String tmpResultsFileName;
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -525,7 +583,8 @@ public class MainForm extends javax.swing.JFrame {
     private javax.swing.JMenu jMenuSettings;
     private javax.swing.JMenu jMenuTimeline;
     private javax.swing.JMenu jMenuTypeOfCharts;
-    private javax.swing.JPanel jPanel4Chart;
+    private javax.swing.JPanel jPanelChart1;
+    private javax.swing.JPanel jPanelChart2;
     private javax.swing.JRadioButtonMenuItem jRadioButtonAreaChart;
     private javax.swing.JRadioButtonMenuItem jRadioButtonLineChart;
     private javax.swing.JRadioButtonMenuItem jRadioButtonOneChart;

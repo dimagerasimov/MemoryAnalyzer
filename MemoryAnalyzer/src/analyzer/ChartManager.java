@@ -5,30 +5,84 @@
  */
 package analyzer;
 
+import java.awt.Color;
+import java.util.ArrayList;
 import analyzer.BinAnalyzer.BinAnalyzerResults;
 import common.GlobalVariables;
-import java.awt.Color;
 import fast_chart.FastChart;
+import fast_chart.FastChart.ChartLimits;
+import fast_chart.XY;
 
 /**
  *
  * @author master
  */
 public class ChartManager {
-    public static FastChart GetNewChart(BinAnalyzerResults binAnalyzerResults)
+
+    private static final String FORMAT_VALUE_AXIS_X_SHORT = "%.1f s.";
+    private static final String FORMAT_VALUE_AXIS_X_LONG = "%.3f s.";
+    private static final String FORMAT_VALUE_AXIS_Y_SHORT = "%.1f MB";
+    private static final String FORMAT_VALUE_AXIS_Y_LONG = "%.3f MB";
+    private static final Color ALL_MEMORY_USED_CHART_COLOR = Color.getHSBColor(0.33f, 0.7f, 0.7f);
+    private static final Color UNFREED_MEMORY_CHART_COLOR = Color.getHSBColor(0.0f, 0.7f, 0.7f);
+          
+    public static FastChart GetAllMemoryUsedChart(ArrayList<XY<Float>> points, String description)
+    {
+        FastChart myChart = GetNewChart(points, description);
+        myChart.setTitle("All memory used");
+        myChart.setColor(0, ALL_MEMORY_USED_CHART_COLOR);
+        return myChart;
+    }
+    
+    public static FastChart GetUnfreedMemoryChart(ArrayList<XY<Float>> points, String description)
+    {
+        FastChart myChart = GetNewChart(points, description);
+        myChart.setTitle("Unfreed memory");
+        myChart.setColor(0, UNFREED_MEMORY_CHART_COLOR);
+        return myChart;
+    }
+    
+    private static void SetFormatValuesOnAxes(FastChart chart, ChartLimits limits) {
+        String formatValueAxisX = FORMAT_VALUE_AXIS_X_SHORT;
+        if(Math.abs(limits.maxX - limits.minX) < 1.0f) {
+            formatValueAxisX = FORMAT_VALUE_AXIS_X_LONG;
+        }
+        chart.setFormatValueAxisX(formatValueAxisX);
+        String formatValueAxisY = FORMAT_VALUE_AXIS_Y_SHORT;
+        if(Math.abs(limits.maxY - limits.minY) < 1.0f) {
+            formatValueAxisY = FORMAT_VALUE_AXIS_Y_LONG;
+        }
+        chart.setFormatValueAxisY(formatValueAxisY);
+    }
+    
+    public static FastChart GetOneChart(BinAnalyzerResults binAnalyzerResults)
     {
         FastChart myChart = new FastChart();
         if(binAnalyzerResults != null)
         {
             myChart.sync(binAnalyzerResults.allMemoryUsedPoints, binAnalyzerResults.unfreedMemoryPoints);
-            myChart.setColor(0, Color.getHSBColor(0.33f, 0.7f, 0.7f));
-            myChart.setColor(1, Color.getHSBColor(0.0f, 0.7f, 0.7f));
-            myChart.setFormatValueAxisX("%.1f s.");
-            myChart.setFormatValueAxisY("%.3f MB");
+            myChart.setColor(0, ALL_MEMORY_USED_CHART_COLOR);
+            myChart.setColor(1, UNFREED_MEMORY_CHART_COLOR);
+            SetFormatValuesOnAxes(myChart, myChart.getLimits());
             myChart.setDescription(0, binAnalyzerResults.allMemoryUsedDescription);
             myChart.setDescription(1, binAnalyzerResults.unfreedMemoryDescription);
         }
         myChart.setTitle("Memory consumption");
+        myChart.setAreaFlag(GlobalVariables.g_ChartsAreaFlag);
+        myChart.setVisible(true);
+        
+        return myChart;
+    }
+
+    private static FastChart GetNewChart(ArrayList<XY<Float>> points, String description)
+    {
+        FastChart myChart = new FastChart();
+        if(points != null && description != null)
+        {
+            myChart.sync(points);
+            SetFormatValuesOnAxes(myChart, myChart.getLimits());
+            myChart.setDescription(0, description);
+        }
         myChart.setAreaFlag(GlobalVariables.g_ChartsAreaFlag);
         myChart.setVisible(true);
         

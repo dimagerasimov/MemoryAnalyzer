@@ -6,7 +6,10 @@
 package analyzer;
 
 import java.io.DataInputStream;
+import analyzer.BinAnalyzer.BinAnalyzerResults;
 import common.MsgBox;
+import common.GlobalVariables;
+import fast_chart.FastChart;
 import memoryanalyzer.MainForm;
 
 /**
@@ -24,6 +27,27 @@ public class ViewerThread extends Thread {
         this.feedback = feedback;
         readerThread = new ReaderThread(dis);
     }
+    
+    private void AddChartsToForm(BinAnalyzerResults results)
+    {
+        FastChart chart1, chart2;
+        chart1 = chart2 = null;
+        if(!GlobalVariables.g_TwoChartsAreActivated)
+        {
+            chart1 = ChartManager.GetOneChart(results);
+        }
+        else if(results != null)
+        {
+            chart1 = ChartManager.GetAllMemoryUsedChart(
+                    results.allMemoryUsedPoints, results.allMemoryUsedDescription);
+            chart2 = ChartManager.GetUnfreedMemoryChart(
+                    results.unfreedMemoryPoints, results.unfreedMemoryDescription);
+        }
+        feedback.addChartToPanel1(chart1);
+        feedback.addChartToPanel2(chart2);
+        feedback.repaint();
+    }
+    
     @Override
     public void run() {
         feedback.setEnabled(false);
@@ -31,14 +55,12 @@ public class ViewerThread extends Thread {
             readerThread.start();
             Thread.sleep(200);
             while(!readerThread.isInterrupted() &&
-                readerThread.getState() != Thread.State.TERMINATED) {            
-                feedback.updateChart(ChartManager.GetNewChart(
-                    BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData())));
+                    readerThread.getState() != Thread.State.TERMINATED) {
+                AddChartsToForm(BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData()));
                 Thread.sleep(1000);
             }
             if(readerThread.isFinishSuccessfully()) {
-                feedback.updateChart(ChartManager.GetNewChart(
-                    BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData())));
+                AddChartsToForm(BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData()));
             }
             else {
                 new MsgBox(feedback, "Error!", readerThread.getErrorMessage(),

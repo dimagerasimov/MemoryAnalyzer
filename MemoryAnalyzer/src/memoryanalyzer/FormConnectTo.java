@@ -323,9 +323,8 @@ public class FormConnectTo extends javax.swing.JFrame {
             ip = jTextFieldIP.getText();
         }
 
-        parent.setTitle(Help.DEFAULT_MAIN_FORM_TITLE);
-        parent.clearChart();
-
+        parent.resetFormForNewAnalyze();
+        
         ConnectThreadStruct connect_struct = new ConnectThreadStruct();
         connect_struct.ip = ip;
         connect_struct.port = port;
