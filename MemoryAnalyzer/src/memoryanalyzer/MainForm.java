@@ -13,7 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import org.jfree.chart.ChartPanel;
+import fast_chart.FastChart;
 import analyzer.ViewerThread;
 import common.MsgBox;
 import common.WaitBox;
@@ -60,7 +60,7 @@ public class MainForm extends javax.swing.JFrame {
         setCenterLocation();
     }
     
-    public void updateChart(ChartPanel newChart) {
+    public void updateChart(FastChart newChart) {
         chart = newChart;
         chart.setSize(jPanel4Chart.getSize());
         // If chart already was on a panel then remove it 
@@ -138,14 +138,18 @@ public class MainForm extends javax.swing.JFrame {
         jMenuItemClose = new javax.swing.JMenuItem();
         jMenuItemExit = new javax.swing.JMenuItem();
         jMenuSettings = new javax.swing.JMenu();
-        jMenuCharts = new javax.swing.JMenu();
-        jRadioButtonOneChart = new javax.swing.JRadioButtonMenuItem();
-        jRadioButtonTwoCharts = new javax.swing.JRadioButtonMenuItem();
         jMenuTimeline = new javax.swing.JMenu();
         jRadioButtonTimelineMode1 = new javax.swing.JRadioButtonMenuItem();
         jRadioButtonTimelineMode2 = new javax.swing.JRadioButtonMenuItem();
         jRadioButtonTimelineMode3 = new javax.swing.JRadioButtonMenuItem();
         jRadioButtonTimelineMode4 = new javax.swing.JRadioButtonMenuItem();
+        jMenuCharts = new javax.swing.JMenu();
+        jMenuNumberOfCharts = new javax.swing.JMenu();
+        jRadioButtonOneChart = new javax.swing.JRadioButtonMenuItem();
+        jRadioButtonTwoCharts = new javax.swing.JRadioButtonMenuItem();
+        jMenuTypeOfCharts = new javax.swing.JMenu();
+        jRadioButtonLineChart = new javax.swing.JRadioButtonMenuItem();
+        jRadioButtonAreaChart = new javax.swing.JRadioButtonMenuItem();
 
         jMenuItem1.setText("jMenuItem1");
 
@@ -162,15 +166,17 @@ public class MainForm extends javax.swing.JFrame {
             }
         });
 
+        jPanel4Chart.setPreferredSize(new java.awt.Dimension(700, 450));
+
         javax.swing.GroupLayout jPanel4ChartLayout = new javax.swing.GroupLayout(jPanel4Chart);
         jPanel4Chart.setLayout(jPanel4ChartLayout);
         jPanel4ChartLayout.setHorizontalGroup(
             jPanel4ChartLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 559, Short.MAX_VALUE)
+            .addGap(0, 600, Short.MAX_VALUE)
         );
         jPanel4ChartLayout.setVerticalGroup(
             jPanel4ChartLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 355, Short.MAX_VALUE)
+            .addGap(0, 400, Short.MAX_VALUE)
         );
 
         jMenuFile.setText("File");
@@ -219,34 +225,10 @@ public class MainForm extends javax.swing.JFrame {
 
         jMenuSettings.setText("Settings");
 
-        jMenuCharts.setText("Charts");
-
-        jRadioButtonOneChart.setText("One chart");
-        jRadioButtonOneChart.setToolTipText("Both graphics are placed to one chart");
-        jRadioButtonOneChart.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                jRadioButtonOneChartStateChanged(evt);
-            }
-        });
-        jMenuCharts.add(jRadioButtonOneChart);
-
-        jRadioButtonTwoCharts.setSelected(true);
-        jRadioButtonTwoCharts.setText("Two charts");
-        jRadioButtonTwoCharts.setToolTipText("For every graphics there are own chart");
-        jRadioButtonTwoCharts.setEnabled(false);
-        jRadioButtonTwoCharts.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                jRadioButtonTwoChartsStateChanged(evt);
-            }
-        });
-        jMenuCharts.add(jRadioButtonTwoCharts);
-
-        jMenuSettings.add(jMenuCharts);
-
         jMenuTimeline.setText("Timeline period");
 
         jRadioButtonTimelineMode1.setSelected(true);
-        jRadioButtonTimelineMode1.setText("One minute");
+        jRadioButtonTimelineMode1.setText("Last 1 minute");
         jRadioButtonTimelineMode1.setEnabled(false);
         jRadioButtonTimelineMode1.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -255,7 +237,7 @@ public class MainForm extends javax.swing.JFrame {
         });
         jMenuTimeline.add(jRadioButtonTimelineMode1);
 
-        jRadioButtonTimelineMode2.setText("Two minutes");
+        jRadioButtonTimelineMode2.setText("Last 2 minutes");
         jRadioButtonTimelineMode2.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 jRadioButtonTimelineMode2StateChanged(evt);
@@ -263,7 +245,7 @@ public class MainForm extends javax.swing.JFrame {
         });
         jMenuTimeline.add(jRadioButtonTimelineMode2);
 
-        jRadioButtonTimelineMode3.setText("Five minutes");
+        jRadioButtonTimelineMode3.setText("Last 5 minutes");
         jRadioButtonTimelineMode3.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 jRadioButtonTimelineMode3StateChanged(evt);
@@ -281,6 +263,56 @@ public class MainForm extends javax.swing.JFrame {
 
         jMenuSettings.add(jMenuTimeline);
 
+        jMenuCharts.setText("Charts");
+
+        jMenuNumberOfCharts.setText("Number of charts");
+
+        jRadioButtonOneChart.setText("One chart");
+        jRadioButtonOneChart.setToolTipText("Both graphics are placed to one chart");
+        jRadioButtonOneChart.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonOneChartStateChanged(evt);
+            }
+        });
+        jMenuNumberOfCharts.add(jRadioButtonOneChart);
+
+        jRadioButtonTwoCharts.setSelected(true);
+        jRadioButtonTwoCharts.setText("Two charts");
+        jRadioButtonTwoCharts.setToolTipText("For every graphics there are own chart");
+        jRadioButtonTwoCharts.setEnabled(false);
+        jRadioButtonTwoCharts.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonTwoChartsStateChanged(evt);
+            }
+        });
+        jMenuNumberOfCharts.add(jRadioButtonTwoCharts);
+
+        jMenuCharts.add(jMenuNumberOfCharts);
+
+        jMenuTypeOfCharts.setText("Type of charts");
+
+        jRadioButtonLineChart.setText("Lines");
+        jRadioButtonLineChart.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonLineChartStateChanged(evt);
+            }
+        });
+        jMenuTypeOfCharts.add(jRadioButtonLineChart);
+
+        jRadioButtonAreaChart.setSelected(true);
+        jRadioButtonAreaChart.setText("Areas");
+        jRadioButtonAreaChart.setEnabled(false);
+        jRadioButtonAreaChart.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                jRadioButtonAreaChartStateChanged(evt);
+            }
+        });
+        jMenuTypeOfCharts.add(jRadioButtonAreaChart);
+
+        jMenuCharts.add(jMenuTypeOfCharts);
+
+        jMenuSettings.add(jMenuCharts);
+
         jMenuBar.add(jMenuSettings);
 
         setJMenuBar(jMenuBar);
@@ -289,11 +321,11 @@ public class MainForm extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel4Chart, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(jPanel4Chart, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel4Chart, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(jPanel4Chart, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
         );
 
         pack();
@@ -452,11 +484,31 @@ public class MainForm extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jRadioButtonTimelineMode4StateChanged
 
+    private void jRadioButtonLineChartStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonLineChartStateChanged
+        if(jRadioButtonLineChart.isSelected())
+        {
+            GlobalVariables.g_ChartsAreaFlag = false;
+            jRadioButtonLineChart.setEnabled(false);
+            jRadioButtonAreaChart.setSelected(false);
+            jRadioButtonAreaChart.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonLineChartStateChanged
+
+    private void jRadioButtonAreaChartStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonAreaChartStateChanged
+        if(jRadioButtonAreaChart.isSelected())
+        {
+            GlobalVariables.g_ChartsAreaFlag = false;
+            jRadioButtonAreaChart.setEnabled(false);
+            jRadioButtonLineChart.setSelected(false);
+            jRadioButtonLineChart.setEnabled(true);
+        }
+    }//GEN-LAST:event_jRadioButtonAreaChartStateChanged
+
     // Private variables
     private final FormConnectTo formConnectTo;
     private Process pinServerProcess;
     private JFileChooser resultsChooser;
-    private ChartPanel chart;
+    private FastChart chart;
     private String tmpResultsFileName;
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -469,9 +521,13 @@ public class MainForm extends javax.swing.JFrame {
     private javax.swing.JMenuItem jMenuItemOpenApp;
     private javax.swing.JMenuItem jMenuItemOpenResults;
     private javax.swing.JMenuItem jMenuItemSaveBinFile;
+    private javax.swing.JMenu jMenuNumberOfCharts;
     private javax.swing.JMenu jMenuSettings;
     private javax.swing.JMenu jMenuTimeline;
+    private javax.swing.JMenu jMenuTypeOfCharts;
     private javax.swing.JPanel jPanel4Chart;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonAreaChart;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonLineChart;
     private javax.swing.JRadioButtonMenuItem jRadioButtonOneChart;
     private javax.swing.JRadioButtonMenuItem jRadioButtonTimelineMode1;
     private javax.swing.JRadioButtonMenuItem jRadioButtonTimelineMode2;

@@ -9,13 +9,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Collection;
 import java.util.TreeMap;
-import org.jfree.data.xy.DefaultTableXYDataset;
-import org.jfree.data.xy.TableXYDataset;
-import org.jfree.data.xy.XYDataItem;
-import org.jfree.data.xy.XYSeries;
 import common.GlobalVariables;
 import crossplatform.Help;
 import bintypes.BinfElement;
+import fast_chart.XY;
 import static bintypes.BinfElement.GetMFreeAddress;
 import static bintypes.BinfElement.GetMFreeSize;
 import static bintypes.BinfElement.GetMFreeTime;
@@ -29,7 +26,15 @@ public class BinAnalyzer {
     // Maximum points for graphic
     public final static int AVERAGE_NUMBER_POINTS = 250;
     
-    public static TableXYDataset MakeAnalyzeMFree(
+    public static class BinAnalyzerResults
+    {
+        public String allMemoryUsedDescription;
+        public ArrayList<XY> allMemoryUsedPoints;
+        public String unfreedMemoryDescription;
+        public ArrayList<XY> unfreedMemoryPoints;
+    };
+
+    public static BinAnalyzerResults MakeAnalyzeMFree(
             ArrayList<BinfElement> binfArray) {
         if(binfArray.isEmpty()) {
             return null;
@@ -44,23 +49,14 @@ public class BinAnalyzer {
         
         // Make equals last values 
         AlignmentXYArrayList(allmem_mas, unfreed_mas);
-        
-        XYSeries allMemory = GetAllmemGraphic(allmem_mas, allmemPreGraphicInfo);
-        XYSeries unfreedMemory = GetUnfreedGraphic(unfreed_mas, unfreedPreGraphicInfo);
-        
-        DefaultTableXYDataset xyDataset = new DefaultTableXYDataset();
-        xyDataset.addSeries(unfreedMemory);
-        xyDataset.addSeries(allMemory);
-        return xyDataset;
+
+        BinAnalyzerResults binAnalyzerResult = new BinAnalyzerResults();
+        binAnalyzerResult.allMemoryUsedDescription = String.format("%.3f", allmemPreGraphicInfo.freed_sum_abs) + " MB";
+        binAnalyzerResult.allMemoryUsedPoints = allmem_mas;
+        binAnalyzerResult.unfreedMemoryDescription = String.format("%.3f", unfreedPreGraphicInfo.unfreed_sum) + " MB";
+        binAnalyzerResult.unfreedMemoryPoints = unfreed_mas; 
+        return binAnalyzerResult;
     }
-    // My xy for optimization
-    private static class XY {
-        public double x;
-        public double y;
-        public XY(double x, double y) {
-            this.x = x; this.y = y;
-        }
-    };
     // My parameters for return
     private static class AllmemPreGraphicInfo {
         double freed_sum_level;
@@ -245,31 +241,6 @@ public class BinAnalyzer {
         unfreedPreGraphicInfo.unfreed_sum = unfreed_sum;
         
         return unfreed_mas;
-    }
-    private static XYSeries GetAllmemGraphic(ArrayList<XY> allmem_mas,
-            AllmemPreGraphicInfo allmemPreGraphicInfo) {
-        double freed_sum_abs = allmemPreGraphicInfo.freed_sum_abs;
-        XYSeries allMemory = new XYSeries("All memory (" +
-                String.format("%.3f", freed_sum_abs) +
-                    " mb)", false, false);   
-        
-        // Default step
-        for(XY xy : allmem_mas) {
-            allMemory.add(new XYDataItem(xy.x, xy.y));
-        }      
-        return allMemory;
-    }
-    private static XYSeries GetUnfreedGraphic(ArrayList<XY> unfreed_mas,
-            UnfreedPreGraphicInfo unfreedPreGraphicInfo) {
-        double unfreed_sum = unfreedPreGraphicInfo.unfreed_sum;
-        XYSeries unfreedMemory = new XYSeries("Unfreed memory (" +
-                String.format("%.3f", unfreed_sum) + " mb)", false, false);
-
-        // Default step
-        for(XY xy : unfreed_mas) {
-            unfreedMemory.add(new XYDataItem(xy.x, xy.y));
-        }   
-        return unfreedMemory;
     }
     
     // Private variables

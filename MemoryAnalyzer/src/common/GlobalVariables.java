@@ -13,4 +13,5 @@ public class GlobalVariables {
     // Global variables
     public static int g_TimelinePeriodMilisec = 60000;
     public static boolean g_TwoChartsAreActivated = true;
+    public static boolean g_ChartsAreaFlag = true;
 }

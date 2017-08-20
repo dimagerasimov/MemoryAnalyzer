@@ -6,7 +6,6 @@
 package analyzer;
 
 import java.io.DataInputStream;
-import org.jfree.data.xy.TableXYDataset;
 import common.MsgBox;
 import memoryanalyzer.MainForm;
 
@@ -33,8 +32,8 @@ public class ViewerThread extends Thread {
             Thread.sleep(200);
             while(!readerThread.isInterrupted() &&
                 readerThread.getState() != Thread.State.TERMINATED) {            
-                TableXYDataset xyDataset = BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData());
-                feedback.updateChart(ChartManager.GetNewChart(xyDataset));
+                feedback.updateChart(ChartManager.GetNewChart(
+                    BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData())));
                 Thread.sleep(1000);
             }
             if(readerThread.isFinishSuccessfully()) {

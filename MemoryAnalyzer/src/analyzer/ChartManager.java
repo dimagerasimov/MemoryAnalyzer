@@ -5,29 +5,33 @@
  */
 package analyzer;
 
+import analyzer.BinAnalyzer.BinAnalyzerResults;
+import common.GlobalVariables;
 import java.awt.Color;
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.PlotOrientation;
-import org.jfree.data.xy.TableXYDataset;
-import org.jfree.chart.ChartPanel;
+import fast_chart.FastChart;
 
 /**
  *
  * @author master
  */
 public class ChartManager {
-    public static ChartPanel GetNewChart(TableXYDataset xyDataset)
+    public static FastChart GetNewChart(BinAnalyzerResults binAnalyzerResults)
     {
-        JFreeChart chart = ChartFactory.createXYLineChart("Memory consumption",
-            "Timeline (sec)", "Capacity (mb)", xyDataset, PlotOrientation.VERTICAL, true, true, false);
-       
-        //Setting of colors
-        chart.getXYPlot().getRenderer().setSeriesPaint(0,
-                Color.getHSBColor(0.0f, 0.9f, 0.8f));
-        chart.getXYPlot().getRenderer().setSeriesPaint(1,
-                Color.getHSBColor(0.333f, 0.9f, 0.8f));
+        FastChart myChart = new FastChart();
+        if(binAnalyzerResults != null)
+        {
+            myChart.sync(binAnalyzerResults.allMemoryUsedPoints, binAnalyzerResults.unfreedMemoryPoints);
+            myChart.setColor(0, Color.getHSBColor(0.33f, 0.7f, 0.7f));
+            myChart.setColor(1, Color.getHSBColor(0.0f, 0.7f, 0.7f));
+            myChart.setFormatValueAxisX("%.1f s.");
+            myChart.setFormatValueAxisY("%.3f MB");
+            myChart.setDescription(0, binAnalyzerResults.allMemoryUsedDescription);
+            myChart.setDescription(1, binAnalyzerResults.unfreedMemoryDescription);
+        }
+        myChart.setTitle("Memory consumption");
+        myChart.setAreaFlag(GlobalVariables.g_ChartsAreaFlag);
+        myChart.setVisible(true);
         
-        return new ChartPanel(chart);
+        return myChart;
     }
 }

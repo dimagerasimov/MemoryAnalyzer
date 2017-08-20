@@ -61,33 +61,6 @@
             <Property name="text" type="java.lang.String" value="Settings"/>
           </Properties>
           <SubComponents>
-            <Menu class="javax.swing.JMenu" name="jMenuCharts">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Charts"/>
-              </Properties>
-              <SubComponents>
-                <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonOneChart">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="One chart"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Both graphics are placed to one chart"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonOneChartStateChanged"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonTwoCharts">
-                  <Properties>
-                    <Property name="selected" type="boolean" value="true"/>
-                    <Property name="text" type="java.lang.String" value="Two charts"/>
-                    <Property name="toolTipText" type="java.lang.String" value="For every graphics there are own chart"/>
-                    <Property name="enabled" type="boolean" value="false"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonTwoChartsStateChanged"/>
-                  </Events>
-                </MenuItem>
-              </SubComponents>
-            </Menu>
             <Menu class="javax.swing.JMenu" name="jMenuTimeline">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Timeline period"/>
@@ -96,7 +69,7 @@
                 <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonTimelineMode1">
                   <Properties>
                     <Property name="selected" type="boolean" value="true"/>
-                    <Property name="text" type="java.lang.String" value="One minute"/>
+                    <Property name="text" type="java.lang.String" value="Last 1 minute"/>
                     <Property name="enabled" type="boolean" value="false"/>
                   </Properties>
                   <Events>
@@ -105,7 +78,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonTimelineMode2">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Two minutes"/>
+                    <Property name="text" type="java.lang.String" value="Last 2 minutes"/>
                   </Properties>
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonTimelineMode2StateChanged"/>
@@ -113,7 +86,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonTimelineMode3">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Five minutes"/>
+                    <Property name="text" type="java.lang.String" value="Last 5 minutes"/>
                   </Properties>
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonTimelineMode3StateChanged"/>
@@ -127,6 +100,65 @@
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonTimelineMode4StateChanged"/>
                   </Events>
                 </MenuItem>
+              </SubComponents>
+            </Menu>
+            <Menu class="javax.swing.JMenu" name="jMenuCharts">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Charts"/>
+              </Properties>
+              <SubComponents>
+                <Menu class="javax.swing.JMenu" name="jMenuNumberOfCharts">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Number of charts"/>
+                  </Properties>
+                  <SubComponents>
+                    <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonOneChart">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="One chart"/>
+                        <Property name="toolTipText" type="java.lang.String" value="Both graphics are placed to one chart"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonOneChartStateChanged"/>
+                      </Events>
+                    </MenuItem>
+                    <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonTwoCharts">
+                      <Properties>
+                        <Property name="selected" type="boolean" value="true"/>
+                        <Property name="text" type="java.lang.String" value="Two charts"/>
+                        <Property name="toolTipText" type="java.lang.String" value="For every graphics there are own chart"/>
+                        <Property name="enabled" type="boolean" value="false"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonTwoChartsStateChanged"/>
+                      </Events>
+                    </MenuItem>
+                  </SubComponents>
+                </Menu>
+                <Menu class="javax.swing.JMenu" name="jMenuTypeOfCharts">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Type of charts"/>
+                  </Properties>
+                  <SubComponents>
+                    <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonLineChart">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="Lines"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonLineChartStateChanged"/>
+                      </Events>
+                    </MenuItem>
+                    <MenuItem class="javax.swing.JRadioButtonMenuItem" name="jRadioButtonAreaChart">
+                      <Properties>
+                        <Property name="selected" type="boolean" value="true"/>
+                        <Property name="text" type="java.lang.String" value="Areas"/>
+                        <Property name="enabled" type="boolean" value="false"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jRadioButtonAreaChartStateChanged"/>
+                      </Events>
+                    </MenuItem>
+                  </SubComponents>
+                </Menu>
               </SubComponents>
             </Menu>
           </SubComponents>
@@ -162,27 +194,32 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="jPanel4Chart" alignment="1" max="32767" attributes="0"/>
+          <Component id="jPanel4Chart" alignment="1" pref="600" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="jPanel4Chart" alignment="1" max="32767" attributes="0"/>
+          <Component id="jPanel4Chart" alignment="1" pref="400" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
   </Layout>
   <SubComponents>
     <Container class="javax.swing.JPanel" name="jPanel4Chart">
+      <Properties>
+        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[700, 450]"/>
+        </Property>
+      </Properties>
 
       <Layout>
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
-              <EmptySpace min="0" pref="559" max="32767" attributes="0"/>
+              <EmptySpace min="0" pref="600" max="32767" attributes="0"/>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <EmptySpace min="0" pref="355" max="32767" attributes="0"/>
+              <EmptySpace min="0" pref="400" max="32767" attributes="0"/>
           </Group>
         </DimensionLayout>
       </Layout>
