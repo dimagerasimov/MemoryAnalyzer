@@ -174,13 +174,27 @@ public class Help {
         return isInstalled;
     }
     public static Process runPinServer() throws IOException {
-        Process pinServerProcess;
+        Process pinServerProcess = null;
         try {
-            // Run the local server with default parameters
-            pinServerProcess = Runtime.getRuntime().exec(Help.GetPinServerPath()
-                + " port=" + Help.GetDefaultPinPort(), null, new File(Help.GetPinWorkDirPath()));
-            Thread.sleep(1000);
-            if(!pinServerProcess.isAlive()) {
+            final int MAX_ATTEMPTS = 3;
+            int numberOfFails = 0;
+            for(int i = 0; i < MAX_ATTEMPTS; i++) {
+                try {
+                    // Run the local server with default parameters
+                    pinServerProcess = Runtime.getRuntime().exec(Help.GetPinServerPath()
+                        + " port=" + Help.GetDefaultPinPort(), null, new File(Help.GetPinWorkDirPath()));
+                }
+                catch(IOException ex) {
+                    //try to repeat
+                    numberOfFails++;
+                    Thread.sleep(1000);
+                }
+                
+            }
+            if(numberOfFails >= 3) {
+                throw new IOException();
+            }
+            if(pinServerProcess != null && !pinServerProcess.isAlive()) {
                 throw new IOException("Pin server can't be run!\n"
                         + "May be pin server already was running on "
                         + Help.GetDefaultPinPort() + " port.");
