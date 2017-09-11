@@ -183,12 +183,18 @@ public class Help {
                     // Run the local server with default parameters
                     pinServerProcess = Runtime.getRuntime().exec(Help.GetPinServerPath()
                         + " port=" + Help.GetDefaultPinPort(), null, new File(Help.GetPinWorkDirPath()));
+                    if(pinServerProcess != null) {
+                        if(pinServerProcess.isAlive()) {
+                            break;
+                        }
+                        pinServerProcess.destroyForcibly();
+                    }
                 }
                 catch(IOException ex) {
-                    //try to repeat
-                    numberOfFails++;
                     Thread.sleep(1000);
                 }
+                //try to repeat one more time
+                numberOfFails++;
                 
             }
             if(numberOfFails >= 3) {
