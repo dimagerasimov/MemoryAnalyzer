@@ -6,14 +6,15 @@
 package analyzer;
 
 import java.util.ArrayList;
-import org.jfree.data.xy.TableXYDataset;
+import java.util.Collections;
 import org.junit.Test;
+import analyzer.BinAnalyzer.BinAnalyzerResults;
+import analyzer.ReaderThread.ReaderThreadCash;
 import bintypes.BinfElement;
 import bintypes.T_Long;
 import bintypes.T_Ptr;
 import bintypes.T_Size_t;
 import crossplatform.Help;
-import java.util.Collections;
 import static org.junit.Assert.*;
 
 /**
@@ -110,20 +111,13 @@ public class BinAnalyzerTest {
         return binfElement;
     }
     
-    private boolean isValidComputeValues(TableXYDataset result,
+    private boolean isValidComputeValues(BinAnalyzerResults results,
             double allmemory_valid_value, double unfreed_memory_valid_value) {     
-        String unfreed_series_key = result.getSeriesKey(0).toString();
-        String allmemory_series_key = result.getSeriesKey(1).toString();
-        
-        int unfreed_number_begin = unfreed_series_key.indexOf("(") + 1;
-        int unfreed_number_end = unfreed_series_key.substring(unfreed_number_begin).indexOf(" ");
-        double unfreed_memory_value = Double.valueOf(unfreed_series_key.substring(
-                unfreed_number_begin, unfreed_number_begin + unfreed_number_end));
-        
-        int allmemory_number_begin = allmemory_series_key.indexOf("(") + 1;
-        int allmemory_number_end = allmemory_series_key.substring(allmemory_number_begin).indexOf(" ");
-        double allmemory_value = Double.valueOf(allmemory_series_key.substring(
-                allmemory_number_begin, allmemory_number_begin + allmemory_number_end));
+        String allmemory_series_key = results.GetAllMemoryUsedDescription();
+        String unfreed_series_key = results.GetUnfreedMemoryDescription();
+
+        double allmemory_value = Double.valueOf(allmemory_series_key.split(" ")[0]);
+        double unfreed_memory_value = Double.valueOf(unfreed_series_key.split(" ")[0]);
 
         return Math.abs(allmemory_value - allmemory_valid_value) < EPS
                 && Math.abs(unfreed_memory_value - unfreed_memory_valid_value) < EPS;
@@ -145,7 +139,8 @@ public class BinAnalyzerTest {
             // TMP VARIABLES //
             long random_size;
 
-            ArrayList<BinfElement> mainArray = new ArrayList(Help.WIN_MB);
+            ReaderThreadCash cash = new ReaderThreadCash();
+            ArrayList<BinfElement> mainArray = cash.GetInputBinArray();
             ArrayList<BinfElement> tmpArray = new ArrayList(Help.WIN_MB);
 
             // FIRST PARTIION (MALLOC)
@@ -198,15 +193,16 @@ public class BinAnalyzerTest {
             }
 
             // CONVERT BYTES TO MEGABYTES
-            allmemory_value /= Help.GetNumBytesInMb();
-            unfreed_memory_value /= Help.GetNumBytesInMb();
+            allmemory_value /= Help.GetNumBytesInMB();
+            unfreed_memory_value /= Help.GetNumBytesInMB();
 
             // TEST
-            TableXYDataset result = BinAnalyzer.MakeAnalyzeMFree(mainArray);
-
-            assertTrue(result.getItemCount(0) > 1);
-            assertTrue(result.getItemCount(1) > 1);
-            assertTrue(isValidComputeValues(result, allmemory_value, unfreed_memory_value));
+            cash.UpdateUnhandledData();
+            BinAnalyzer.MakeAnalyzeMFree(cash);
+            BinAnalyzerResults results = cash.GetAnalyzerResults();
+            assertTrue(results.GetAllMemoryUsedPoints().size() > 1);
+            assertTrue(results.GetUnfreedMemoryPoints().size() > 1);
+            assertTrue(isValidComputeValues(results, allmemory_value, unfreed_memory_value));
         }
     }
 
@@ -226,7 +222,8 @@ public class BinAnalyzerTest {
             // TMP VARIABLES //
             long random_size;
 
-            ArrayList<BinfElement> mainArray = new ArrayList(Help.WIN_MB);
+            ReaderThreadCash cash = new ReaderThreadCash();
+            ArrayList<BinfElement> mainArray = cash.GetInputBinArray();
             ArrayList<BinfElement> tmpArray = new ArrayList(Help.WIN_MB);
 
             // FIRST PARTIION (MALLOC)
@@ -270,15 +267,16 @@ public class BinAnalyzerTest {
             }
 
             // CONVERT BYTES TO MEGABYTES
-            allmemory_value /= Help.GetNumBytesInMb();
-            unfreed_memory_value /= Help.GetNumBytesInMb();
+            allmemory_value /= Help.GetNumBytesInMB();
+            unfreed_memory_value /= Help.GetNumBytesInMB();
 
             // TEST
-            TableXYDataset result = BinAnalyzer.MakeAnalyzeMFree(mainArray);
-
-            assertTrue(result.getItemCount(0) > 1);
-            assertTrue(result.getItemCount(1) > 1);
-            assertTrue(isValidComputeValues(result, allmemory_value, unfreed_memory_value));
+            cash.UpdateUnhandledData();
+            BinAnalyzer.MakeAnalyzeMFree(cash);
+            BinAnalyzerResults results = cash.GetAnalyzerResults();
+            assertTrue(results.GetAllMemoryUsedPoints().size() > 1);
+            assertTrue(results.GetUnfreedMemoryPoints().size() > 1);
+            assertTrue(isValidComputeValues(results, allmemory_value, unfreed_memory_value));
         }
     }
 }
