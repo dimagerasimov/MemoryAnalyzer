@@ -39,9 +39,9 @@ public class ViewerThread extends Thread {
         else if(results != null)
         {
             chart1 = ChartManager.GetAllMemoryUsedChart(
-                    results.allMemoryUsedPoints, results.allMemoryUsedDescription);
+                    results.GetAllMemoryUsedPoints(), results.GetAllMemoryUsedDescription());
             chart2 = ChartManager.GetUnfreedMemoryChart(
-                    results.unfreedMemoryPoints, results.unfreedMemoryDescription);
+                    results.GetUnfreedMemoryPoints(), results.GetUnfreedMemoryDescription());
         }
         feedback.addChartToPanel1(chart1);
         feedback.addChartToPanel2(chart2);
@@ -56,11 +56,15 @@ public class ViewerThread extends Thread {
             Thread.sleep(200);
             while(!readerThread.isInterrupted() &&
                     readerThread.getState() != Thread.State.TERMINATED) {
-                AddChartsToForm(BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData()));
+                readerThread.GetStreamCash().UpdateUnhandledData();
+                BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamCash());
+                AddChartsToForm(readerThread.GetStreamCash().GetAnalyzerResults());
                 Thread.sleep(1000);
             }
             if(readerThread.isFinishSuccessfully()) {
-                AddChartsToForm(BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamData()));
+                readerThread.GetStreamCash().UpdateUnhandledData();
+                BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamCash());
+                AddChartsToForm(readerThread.GetStreamCash().GetAnalyzerResults());
             }
             else {
                 new MsgBox(feedback, "Error!", readerThread.getErrorMessage(),

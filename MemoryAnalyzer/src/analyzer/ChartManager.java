@@ -62,13 +62,13 @@ public class ChartManager {
         FastChart myChart = new FastChart();
         if(binAnalyzerResults != null)
         {
-            myChart.sync(binAnalyzerResults.allMemoryUsedPoints, binAnalyzerResults.unfreedMemoryPoints);
+            myChart.sync(binAnalyzerResults.GetAllMemoryUsedPoints(), binAnalyzerResults.GetUnfreedMemoryPoints());
             myChart.setGraphicColor(0, ALL_MEMORY_USED_CHART_COLOR);
             myChart.setGraphicColor(1, UNFREED_MEMORY_CHART_COLOR);
             SetFormatValuesOnAxes(myChart, myChart.getLimits());
             myChart.ScaleLimits(1.0f, 1.05f, 1.0f, 1.1f);
-            myChart.setDescription(0, binAnalyzerResults.allMemoryUsedDescription);
-            myChart.setDescription(1, binAnalyzerResults.unfreedMemoryDescription);
+            myChart.setDescription(0, binAnalyzerResults.GetAllMemoryUsedDescription());
+            myChart.setDescription(1, binAnalyzerResults.GetUnfreedMemoryDescription());
         }
         myChart.setTitle("Memory consumption");
         myChart.setAreaFlag(GlobalVariables.g_ChartsAreaFlag);

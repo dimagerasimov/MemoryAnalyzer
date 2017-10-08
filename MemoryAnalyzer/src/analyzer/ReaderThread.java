@@ -5,9 +5,11 @@
  */
 package analyzer;
 
+import analyzer.BinAnalyzer.BinAnalyzerResults;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import bintypes.BinfElement;
 import crossplatform.Help;
 
@@ -16,11 +18,52 @@ import crossplatform.Help;
  * @author master
  */
 public class ReaderThread extends Thread {
+    public static class ReaderThreadCash {
+        public static final int INITIAL_MEMORY = 10 * Help.WIN_MB; //10MB
+
+        public ReaderThreadCash() {
+            readCounterInput = 0;
+            inputBinArray = new ArrayList(INITIAL_MEMORY);
+            unhandledData = new ArrayList(INITIAL_MEMORY);
+            handledData = new HashMap<>(INITIAL_MEMORY);
+            analyzerResults = new BinAnalyzerResults();
+        }
+        public ArrayList<BinfElement> GetInputBinArray() {
+            return inputBinArray;
+        }
+        public void UpdateUnhandledData() {
+            unhandledData.clear();
+            int sizeToRead = inputBinArray.size() - readCounterInput;
+            for(int i = readCounterInput; i < readCounterInput + sizeToRead; i++) {
+                unhandledData.add(inputBinArray.get(i));
+            }
+            readCounterInput += sizeToRead;
+        }
+        public ArrayList<BinfElement> GetUnhandledData() {
+            return unhandledData;
+        }
+        public HashMap<Long, BinfElement> GetAlreadyHandledData() {
+            return handledData;
+        }
+        public BinAnalyzerResults GetAnalyzerResults() {
+            return analyzerResults;
+        }
+        public boolean WasNewDataReceived() {
+            return !unhandledData.isEmpty();
+        }
+        
+        private int readCounterInput;
+        private final ArrayList<BinfElement> inputBinArray;
+        private final ArrayList<BinfElement> unhandledData;
+        private final HashMap<Long, BinfElement> handledData;
+        private final BinAnalyzerResults analyzerResults;
+    };
+
     public ReaderThread(String pathToBinaryFile) {
         super();
         this.pathToBinaryFile = pathToBinaryFile;
         this.dis = null;
-        binfArray = new ArrayList(Help.WIN_MB);
+        cash = new ReaderThreadCash();
         isFinishSuccessfully = false;
         errorMessage = null;
     }   
@@ -28,7 +71,7 @@ public class ReaderThread extends Thread {
         super();
         this.pathToBinaryFile = null;
         this.dis = dis;
-        binfArray = new ArrayList(Help.WIN_MB);
+        cash = new ReaderThreadCash();
         isFinishSuccessfully = false;
         errorMessage = null;
     }   
@@ -36,9 +79,9 @@ public class ReaderThread extends Thread {
     public void run() {
         try {
             if(dis != null) {
-                StreamReader.ReadInputStream(dis, binfArray);
+                StreamReader.ReadInputStream(dis, cash.GetInputBinArray());
             } else {
-                BinReader.ReadMFreeBinFile(pathToBinaryFile, binfArray);
+                BinReader.ReadMFreeBinFile(pathToBinaryFile, cash.GetInputBinArray());
             }
             isFinishSuccessfully = true;
         } catch (InterruptedException | IOException ex) {
@@ -54,14 +97,14 @@ public class ReaderThread extends Thread {
         }
         return errorMessage;
     }
-    public ArrayList<BinfElement> GetStreamData() {
-        return new ArrayList(binfArray);
+    public ReaderThreadCash GetStreamCash() {
+        return cash;
     }
     
     // Private variables
     private final String pathToBinaryFile;
     private final DataInputStream dis;
-    private final ArrayList<BinfElement> binfArray;
+    private final ReaderThreadCash cash;
     private boolean isFinishSuccessfully;
     private String errorMessage;
 }
