@@ -16,6 +16,9 @@ typedef unsigned long long int type_long;
 
 typedef unsigned char byte;
 
+#define MAX_TYPES 4
+#define MAX_DATA_SIZE 32
+
 class BinfElement {
 	public:
 		BinfElement(const byte __code_function, const byte __count,
@@ -33,32 +36,26 @@ class BinfElement {
 	private:
 		byte code_function;
 		byte count;
-		byte* types;
+		byte types[MAX_TYPES];
 		byte size_of_data;
-		byte* data;
+		byte data[MAX_DATA_SIZE];
 };
 
 BinfElement :: BinfElement(const byte __code_function, const byte __count,
 	const byte* __types, const byte __size_of_data, const byte* __data) :
 		code_function(__code_function), count(__count), size_of_data(__size_of_data)
 {
-	types = new byte[__count];
-	data = new byte[__size_of_data];
 	memcpy(types, __types, __count * sizeof(byte));
 	memcpy(data, __data, __size_of_data);
 }
 BinfElement :: BinfElement(const BinfElement& obj) :
 	code_function(obj.code_function), count(obj.count), size_of_data(obj.size_of_data)
 {
-	this->types = new byte[obj.count];
-	this->data = new byte[obj.size_of_data];
 	memcpy(this->types, obj.types, obj.count * sizeof(byte));
 	memcpy(this->data, obj.data, obj.size_of_data);
 }
 BinfElement :: ~BinfElement( void )
 {
-	delete[] types;
-	delete[] data;
 }
 byte BinfElement :: GetCodeFunction( void )
 {
