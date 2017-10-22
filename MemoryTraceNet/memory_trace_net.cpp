@@ -1,7 +1,7 @@
 #include "pin.H"
 #include <iostream>
 #include <sys/time.h>
-#include <execinfo.h>
+#include <gnu/lib-names.h>
 
 #include "bin_journal.h"
 #include "net.h"
@@ -12,21 +12,30 @@
 
 #define MAX_STR_LEN 256
 
-typedef VOID * ( *FP_MALLOC )( size_t );
-typedef VOID ( *FP_FREE )( size_t );
-typedef ADDRINT ( *FP_MAIN)( int, char** );
-typedef VOID ( *FP_EXIT )( int );
+void (*p_realfree) ( size_t ); //pointer to real free function
+int (*p_backtrace) ( void**, int ); //pointer to backtrace function
+char** (*p_backtrace_symbols) ( void**, int ); //pointer to backtrace_symbols function
+
+//The types for all function pointers
+typedef VOID * ( *TYPE_FP_MALLOC )( size_t );
+typedef VOID ( *TYPE_FP_FREE )( size_t );
+typedef ADDRINT ( *TYPE_FP_MAIN)( int, char** );
+typedef VOID ( *TYPE_FP_EXIT )( int );
 
 /* ===================================================================== */
 /* Global variables							*/
 /* ===================================================================== */
 
-bool bInit;
-PIN_MUTEX pin_mutex;
-type_long last_time_in_ms;
-struct timeval start_time;
-Net* transmitter;
-BinJournal* binJournal;
+bool bWasMainInvoked; //after main function in traced application it's true
+bool bWasBacktraceTaken; //the flag indicates backtrace was taken or not
+bool bUseUsualMallocFree; //the flag to use usual malloc and free in places where it's needed
+
+// Shared data
+PIN_MUTEX shared_pin_mutex;
+type_long shared_last_time;
+struct timeval shared_start_time;
+Net* shared_transmitter;
+BinJournal* shared_bin_journal;
 
 /* ===================================================================== */
 /* Commandline Switches */
@@ -40,7 +49,7 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 /* ===================================================================== */
 
 #if defined(TARGET_LINUX)
-#define STDLIB "libc.so"
+#define STDLIB LIBC_SO
 #elif defined(TARGET_MAC)
 #define STDLIB "something for mac"
 #elif defined(TARGET_WINDOWS)
@@ -62,6 +71,10 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 	#define MALLOC "malloc"
 	#define FREE "free"
 	#endif
+	#if defined(TARGET_LINUX)
+	#define BACKTRACE "backtrace"
+	#define BACKTRACE_SYMBOLS "backtrace_symbols"
+	#endif
 #endif
 
 /* ===================================================================== */
@@ -77,18 +90,18 @@ void LogError(char msg[]) {
 
 /* ===================================================================== */
 
-type_long GetCurrentTimeMilisec() {
+void UpdateLastTimeInMilisec(type_long& out_last_time) {
 	struct timeval current_time;
 	gettimeofday(&current_time, NULL);
-	type_long current_time_in_ms = (current_time.tv_sec - start_time.tv_sec) * 1000000
-		+ (current_time.tv_usec - start_time.tv_usec);
-	if(last_time_in_ms >= current_time_in_ms){
-		last_time_in_ms += 1;
+	type_long current_time_in_ms = (current_time.tv_sec - shared_start_time.tv_sec) * 1000000
+		+ (current_time.tv_usec - shared_start_time.tv_usec);
+	if(shared_last_time >= current_time_in_ms){
+		shared_last_time += 1;
 	}
 	else {
-		last_time_in_ms = current_time_in_ms;
+		shared_last_time = current_time_in_ms;
 	}
-	return last_time_in_ms;
+	out_last_time = shared_last_time;
 }
 int ParseToIP(int argc, char* argv[]) {
 	char s_ip[] = "ip=";
@@ -120,52 +133,75 @@ int ParseToPort(int argc, char* argv[]) {
 VOID Ini( int argc, char* argv[] ) {
 	LogInfo((char*)"\n*** MEMORY TRACE ***\n");
 	// Init pin mutex
-	PIN_MutexInit(&pin_mutex);
+	PIN_MutexInit(&shared_pin_mutex);
 	// Init a binary journal
-	binJournal = new BinJournal(KnobOutputFile.Value().c_str());
-	transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
-	gettimeofday(&start_time, NULL);
-	last_time_in_ms = 0;//Initialize
-	bInit = false;
+	shared_bin_journal = new BinJournal(KnobOutputFile.Value().c_str());
+	shared_transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
+	gettimeofday(&shared_start_time, NULL);
+	// Init variables
+	shared_last_time = 0;
+	bWasMainInvoked = false;
+	bWasBacktraceTaken = false;
+	bUseUsualMallocFree = false;
 }
 VOID Fini( VOID ) {
-	if(transmitter == NULL || binJournal == NULL) {
+	if(shared_transmitter == NULL || shared_bin_journal == NULL) {
 		return;
 	}
 
-	PIN_MutexLock(&pin_mutex);
+	PIN_MutexLock(&shared_pin_mutex);
 
-	bool pushOk = binJournal->Push();
+	bool pushOk = shared_bin_journal->Push();
 	if(!pushOk) {
 		LogError((char*)
 		"Error: The binary journal hasn't been recorded. Try again.");
 	}
-	transmitter->FlushAll();
+	shared_transmitter->FlushAll();
 	
-	delete transmitter;
-	transmitter = NULL;
-	delete binJournal;
-	binJournal = NULL;
+	delete shared_transmitter;
+	shared_transmitter = NULL;
+	delete shared_bin_journal;
+	shared_bin_journal = NULL;
 
-	PIN_MutexUnlock(&pin_mutex);
-	PIN_MutexFini(&pin_mutex);
+	PIN_MutexUnlock(&shared_pin_mutex);
+	PIN_MutexFini(&shared_pin_mutex);
 }
 
 /* ===================================================================== */
 /* Replacement routines							*/
 /* ===================================================================== */
 
-VOID * NewMalloc( FP_MALLOC orgFuncptr, size_t arg0, ADDRINT returnIp )
+VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0, ADDRINT returnIp )
 {
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	VOID * v = orgFuncptr( arg0 );
 
-	if(bInit) {
-		PIN_MutexLock(&pin_mutex);
+	if(bUseUsualMallocFree) {
+		return v;
+	}
 
-		// Current time
-		type_long current_time = GetCurrentTimeMilisec();
+	if(bWasMainInvoked) {
+		if(bWasBacktraceTaken) {
+			const int BACKTRACE_BUFFER_SIZE = 25;
+			void* buffer[BACKTRACE_BUFFER_SIZE];
+			cout << "/// Backtrace test ///" << endl;
+
+			bUseUsualMallocFree = true;
+			p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
+			char** strings = p_backtrace_symbols(buffer, BACKTRACE_BUFFER_SIZE);
+			for(int i = 0; i < BACKTRACE_BUFFER_SIZE; i++) {
+				cout << strings[i] << " ";
+			}
+			cout << endl;
+			p_realfree((size_t)strings);
+			bUseUsualMallocFree = false;
+		}
+
+		PIN_MutexLock(&shared_pin_mutex);
+
+		type_long current_time;
+		UpdateLastTimeInMilisec(current_time);
 
 		byte count = 4;
 		byte size_of_data = sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr) + sizeof(type_long);
@@ -194,28 +230,33 @@ VOID * NewMalloc( FP_MALLOC orgFuncptr, size_t arg0, ADDRINT returnIp )
 			&copy_current_time, sizeof(type_long));
 
 		BinfElement binfElement(FCODE_MALLOC, count, types, size_of_data, data);
-		binJournal->AddBinf(binfElement, MFREE_SECTION);
-		transmitter->SendBinf(binfElement, current_time);
+		shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
+		shared_transmitter->SendBinf(binfElement, current_time);
 	
 		delete[] types;
 		delete[] data;
 
-		PIN_MutexUnlock(&pin_mutex);
+		PIN_MutexUnlock(&shared_pin_mutex);
 	}
 	return v;
 }
 
-VOID NewFree( FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
+VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
 {
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	orgFuncptr( (size_t)arg0 );
 
-	if(bInit) {
-		PIN_MutexLock(&pin_mutex);
+	if(bUseUsualMallocFree) {
+		return;
+	}
+
+	if(bWasMainInvoked) {
+		PIN_MutexLock(&shared_pin_mutex);
 
 		// Current time
-		type_long current_time = GetCurrentTimeMilisec();
+		type_long current_time;
+		UpdateLastTimeInMilisec(current_time);
 
 		byte count = 3;
 		byte size_of_data = sizeof(type_ptr) + sizeof(type_ptr) + sizeof(type_long);
@@ -239,25 +280,25 @@ VOID NewFree( FP_FREE orgFuncptr, VOID* arg0, ADDRINT returnIp )
 		memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_ptr)], &copy_current_time, sizeof(type_long));
 
 		BinfElement binfElement(FCODE_FREE, count, types, size_of_data, data);
-		binJournal->AddBinf(binfElement, MFREE_SECTION);
-		transmitter->SendBinf(binfElement, current_time);
+		shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
+		shared_transmitter->SendBinf(binfElement, current_time);
 
 		delete[] types;
 		delete[] data;
 
-		PIN_MutexUnlock(&pin_mutex);
+		PIN_MutexUnlock(&shared_pin_mutex);
 	}
 }
 
-VOID NewMain( FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
+VOID NewMain( TYPE_FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
 	// Call the relocated entry point of the original (replaced) routine.
 	//
-	bInit = true;
+	bWasMainInvoked = true;
 	orgFuncptr( arg0, (char**)arg1 );
 	Fini();
 }
 
-VOID NewExit( FP_EXIT orgFuncptr, ADDRINT arg0) {
+VOID NewExit( TYPE_FP_EXIT orgFuncptr, ADDRINT arg0) {
 	// Call the relocated entry point of the original (replaced) routine.
 	//
 	Fini();
@@ -307,6 +348,8 @@ bool ReplaceFunction(IMG* img, char* funcName) {
 				PROTO_Free( proto_malloc );
 			}
 			else if(strcmp(funcName, FREE) == 0) {
+				ADDRINT addr = RTN_Address(rtn);
+				p_realfree = (void (*)( size_t ))addr;
 				PROTO proto_free = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
 					FREE, PIN_PARG(size_t), PIN_PARG_END() );
 				RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewFree),
@@ -327,6 +370,14 @@ bool ReplaceFunction(IMG* img, char* funcName) {
 					IARG_END);
 				PROTO_Free(proto_exit);
 			}
+			else if(strcmp(funcName, BACKTRACE) == 0) {
+				ADDRINT addr = RTN_Address(rtn);
+				p_backtrace = (int (*)( void**, int ))addr;
+			}
+			else if(strcmp(funcName, BACKTRACE_SYMBOLS) == 0) {
+				ADDRINT addr = RTN_Address(rtn);
+				p_backtrace_symbols = (char** (*)( void**, int ))addr;
+			}
 		}
 		sprintf(message, "\tWas it replaced? %s\n",
 			bResult == true ? "YES" : "NO");
@@ -343,7 +394,7 @@ VOID ImageLoad( IMG img, VOID *v )
 {
 	char* imgName = (char*)IMG_Name(img).c_str();
 
-	if(!bInit)
+	if(!bWasMainInvoked)
 	{// Replace the "main" function with my function only once
 		ReplaceFunction(&img, (char*)MAIN);
 	}
@@ -357,6 +408,11 @@ VOID ImageLoad( IMG img, VOID *v )
 		ReplaceFunction(&img, (char*)FREE);
 		// Replace the "exit" function with my function
 		ReplaceFunction(&img, (char*)EXIT);
+		// Replace the "backtrace" function with my function
+		ReplaceFunction(&img, (char*)BACKTRACE);
+		// Replace the "backtrace_symbols" function with my function
+		ReplaceFunction(&img, (char*)BACKTRACE_SYMBOLS);
+		bWasBacktraceTaken = (p_backtrace != NULL) && (p_backtrace_symbols != NULL);
 	}
 	else
 	{
