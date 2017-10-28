@@ -233,7 +233,7 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
 	if(shared_bWasMainInvoked //this malloc is after main function
 		&& !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my malloc
 
-		type_ptr copy_backtrace_pointer = (type_ptr)0x00;
+		type_ptr copy_backtrace_pointer = (type_ptr)0xFFFFFFFF;
 		if(shared_bWasBacktraceTaken) {
 			const int BACKTRACE_BUFFER_SIZE = 4;
 			void* buffer[BACKTRACE_BUFFER_SIZE];
@@ -241,10 +241,12 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
 			AddCurrentThreadTo(arr_bUseUsualMallocFree);
 			// There is malloc in backtrace function, there is needed to use usual malloc else it will be recursive
 			p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
-			//If malloc was invoked in traced application then the pointer is third item
-			//If operator new was invoked then the pointer to that is fourth item
-			copy_backtrace_pointer = (buffer[2] < buffer[3]) ? (type_ptr)buffer[2] : (type_ptr)buffer[3];
-
+			for(int i = 0; i < BACKTRACE_BUFFER_SIZE; i++) {
+				if(copy_backtrace_pointer > (type_ptr)buffer[i]) { 
+					copy_backtrace_pointer = (type_ptr)buffer[i];
+					break;
+				}
+			}
 			DeleteCurrentThreadIn(arr_bUseUsualMallocFree);
 		}
 
