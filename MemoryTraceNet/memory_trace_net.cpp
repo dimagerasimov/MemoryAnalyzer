@@ -235,7 +235,7 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
 
 		type_ptr copy_backtrace_pointer = (type_ptr)0xFFFFFFFF;
 		if(shared_bWasBacktraceTaken) {
-			const int BACKTRACE_BUFFER_SIZE = 4;
+			const int BACKTRACE_BUFFER_SIZE = 16;
 			void* buffer[BACKTRACE_BUFFER_SIZE];
 
 			AddCurrentThreadTo(arr_bUseUsualMallocFree);
