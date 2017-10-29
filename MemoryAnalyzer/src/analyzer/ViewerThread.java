@@ -11,7 +11,6 @@ import analyzer.BinAnalyzer.BinAnalyzerResults;
 import common.MsgBox;
 import common.GlobalVariables;
 import fast_chart.FastChart;
-import memoryanalyzer.GdbForm;
 import memoryanalyzer.MainForm;
 
 /**
@@ -54,6 +53,7 @@ public class ViewerThread extends Thread {
     
     @Override
     public void run() {
+        HashMap<Long, Long> gdbThreadInfo = null;
         feedback.setEnabled(false);
         try {
             readerThread.start();
@@ -69,9 +69,7 @@ public class ViewerThread extends Thread {
                 readerThread.GetStreamCash().UpdateUnhandledData();
                 BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamCash());
                 AddChartsToForm(readerThread.GetStreamCash().GetAnalyzerResults());
-                HashMap<Long, Long> gdbResults = BinAnalyzer.MakeGdbAddressesList(readerThread.GetStreamCash());
-                GdbForm gdbForm = new GdbForm(pathToApp, gdbResults);
-                gdbForm.setVisible(true);
+                gdbThreadInfo = BinAnalyzer.MakeGdbAddressesList(readerThread.GetStreamCash());
             }
             else {
                 new MsgBox(feedback, "Error!", readerThread.getErrorMessage(),
@@ -84,7 +82,13 @@ public class ViewerThread extends Thread {
             new MsgBox(feedback, "Error!", "Viewing was interrupted!",
                 MsgBox.ACTION_OK).setVisible(true);
         }
+
+        //Next steps depend on existing of gdb information
         feedback.setEnabled(true);
+        if(pathToApp != null && gdbThreadInfo != null) {
+            GdbThread gdbThread = new GdbThread(feedback, pathToApp, gdbThreadInfo);
+            gdbThread.start();
+        }
     }
     
     // Private variables

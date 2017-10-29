@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 import javax.swing.DefaultListModel;
+import analyzer.GdbThread.GdbThreadFeedback;
 import common.MsgBox;
 import crossplatform.Help;
 
@@ -39,12 +40,8 @@ public class GdbForm extends javax.swing.JFrame {
         }
     }
 
-    /**
-     * Creates new form GdbForm
-     * @param path
-     * @param gdbResults
-     */
-    public GdbForm(String path, HashMap<Long, Long> gdbResults) {
+    public GdbForm(MainForm linkToMainForm, GdbThreadFeedback gdbThreadFeedback,
+            String path, HashMap<Long, Long> gdbResults) {
         initComponents();
         setCenterLocation();
 
@@ -53,18 +50,21 @@ public class GdbForm extends javax.swing.JFrame {
 
         ErrorListEntry[] entries = null;
         if (gdbResults == null || gdbResults.isEmpty()) {
-            new MsgBox(this, "Congratuations!", "No memory leaks in app.",
+            gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
+            new MsgBox(this, "Congratuations!", "No memory leaks in application.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
         else if(!IsDebuggingSymbolsInApp(path)) {
-            new MsgBox(this, "No info!", "Unfortunately this app contains no debug info. " + 
+            gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
+            new MsgBox(this, "No info!", "Unfortunately this application contains no debug info. " + 
                     "If you have source code you can build this one with \"-g\" flag.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
         else {
             entries = MakeErrorListEntries(path, gdbResults);
             if(entries == null) {
-                new MsgBox(this, "No source code!", "App source code isn't found.",
+                gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
+                new MsgBox(this, "No source code!", "Application source code is not found.",
                         MsgBox.ACTION_CLOSE).setVisible(true);
             }
         }
@@ -72,6 +72,16 @@ public class GdbForm extends javax.swing.JFrame {
         errorListEntries = entries;
         beginningSelectedIndex = 0;
         endSelectedIndex = 0;
+        feedback = linkToMainForm;
+        feedback.setEnabled(false);
+        if(gdbThreadFeedback.GetState() == GdbThreadFeedback.NOT_DEFINED) {
+            gdbThreadFeedback.SetState(GdbThreadFeedback.STARTED_SUCCESSFULLY);
+        }
+    }
+
+    public void ActivateGdbForm() {
+        setVisible(true);
+        jErrorList.setSelectedIndex(0);
     }
 
     private void setCenterLocation()
@@ -222,7 +232,13 @@ public class GdbForm extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Results from GDB");
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosed(java.awt.event.WindowEvent evt) {
+                formWindowClosed(evt);
+            }
+        });
 
+        jErrorList.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jErrorList.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
         jErrorList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         jErrorList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
@@ -241,6 +257,7 @@ public class GdbForm extends javax.swing.JFrame {
         jTextArea.setColumns(20);
         jTextArea.setFont(new java.awt.Font("Ubuntu", 0, 17)); // NOI18N
         jTextArea.setText("Click on any item of the error list to see info about this.");
+        jTextArea.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jTextArea.setSelectionColor(new java.awt.Color(230, 110, 100));
         jTextArea.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
             public void mouseDragged(java.awt.event.MouseEvent evt) {
@@ -332,11 +349,16 @@ public class GdbForm extends javax.swing.JFrame {
         KeepLineSelected();
     }//GEN-LAST:event_jTextAreaMousePressed
 
+    private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
+        feedback.setEnabled(true);
+    }//GEN-LAST:event_formWindowClosed
+
     private int beginningSelectedIndex;
     private int endSelectedIndex;
     private final String pathToApp;
     private final ErrorListEntry[] errorListEntries;
-    
+    private final MainForm feedback;
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JList<String> jErrorList;
     private javax.swing.JLabel jErrorListTitle;
