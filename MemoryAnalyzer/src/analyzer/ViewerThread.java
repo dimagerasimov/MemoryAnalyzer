@@ -6,10 +6,12 @@
 package analyzer;
 
 import java.io.DataInputStream;
+import java.util.HashMap;
 import analyzer.BinAnalyzer.BinAnalyzerResults;
 import common.MsgBox;
 import common.GlobalVariables;
 import fast_chart.FastChart;
+import memoryanalyzer.GdbForm;
 import memoryanalyzer.MainForm;
 
 /**
@@ -19,11 +21,13 @@ import memoryanalyzer.MainForm;
 public class ViewerThread extends Thread {
     public ViewerThread(MainForm feedback, String pathToBinaryFile) {
         super();
+        pathToApp = pathToBinaryFile;
         this.feedback = feedback;
         readerThread = new ReaderThread(pathToBinaryFile);
     }
-    public ViewerThread(MainForm feedback, DataInputStream dis) {
+    public ViewerThread(MainForm feedback, String remotePath, DataInputStream dis) {
         super();
+        pathToApp = remotePath;
         this.feedback = feedback;
         readerThread = new ReaderThread(dis);
     }
@@ -65,6 +69,9 @@ public class ViewerThread extends Thread {
                 readerThread.GetStreamCash().UpdateUnhandledData();
                 BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamCash());
                 AddChartsToForm(readerThread.GetStreamCash().GetAnalyzerResults());
+                HashMap<Long, Long> gdbResults = BinAnalyzer.MakeGdbAddressesList(readerThread.GetStreamCash());
+                GdbForm gdbForm = new GdbForm(pathToApp, gdbResults);
+                gdbForm.setVisible(true);
             }
             else {
                 new MsgBox(feedback, "Error!", readerThread.getErrorMessage(),
@@ -81,6 +88,7 @@ public class ViewerThread extends Thread {
     }
     
     // Private variables
+    private final String pathToApp;
     private final MainForm feedback;  
     private final ReaderThread readerThread;
 }

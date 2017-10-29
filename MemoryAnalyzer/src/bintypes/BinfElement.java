@@ -92,6 +92,36 @@ public class BinfElement {
         }
         return bytesToSize_t(bytes_to_size_t);
     }
+    public static T_Ptr GetBacktracePointer(BinfElement element)
+    {
+        int offset = 0;
+        byte[] bytes_to_ptr = new byte[T_Ptr.getSize()];
+        switch(element.code_function) {
+            case BinfElement.FCODE_MALLOC:
+                //arg3
+                for(int i = 0; i < 2; i++) {
+                    switch(element.types[0]){
+                        case BinfElement.TCODE_PTR:
+                            offset += T_Ptr.getSize();
+                            break;
+                        case BinfElement.TCODE_SIZE_T:
+                            offset += T_Size_t.getSize();
+                            break;
+                        case BinfElement.TCODE_LONG:
+                            offset += T_Long.getSize();
+                            break;
+                        default:
+                            return new T_Ptr(-1);
+                    }
+                }
+                for(int i = 0; i < T_Ptr.getSize(); i++)
+                    { bytes_to_ptr[i] = element.data[i + offset]; }
+                break;
+            default:
+                return new T_Ptr(-1);
+        }
+        return bytesToPtr(bytes_to_ptr);
+    }
     public static T_Long GetMFreeTime(BinfElement element)
     {
         int offset = 0;

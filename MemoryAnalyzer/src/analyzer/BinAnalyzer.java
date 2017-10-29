@@ -14,6 +14,7 @@ import crossplatform.Help;
 import bintypes.BinfElement;
 import fast_chart.XY;
 import analyzer.ReaderThread.ReaderThreadCash;
+import static bintypes.BinfElement.GetBacktracePointer;
 import static bintypes.BinfElement.GetMFreeAddress;
 import static bintypes.BinfElement.GetMFreeSize;
 import static bintypes.BinfElement.GetMFreeTime;
@@ -48,6 +49,26 @@ public class BinAnalyzer {
             cash.GetAnalyzerResults().allMemoryUsedDescription = GenerateDescription(cash.GetAnalyzerResults().freed_sum_abs);
             cash.GetAnalyzerResults().unfreedMemoryDescription = GenerateDescription(cash.GetAnalyzerResults().unfreed_sum_level);
         }
+    }
+
+    public static HashMap<Long, Long> MakeGdbAddressesList(ReaderThreadCash cash) {
+        HashMap<Long, Long> gdbAddressesList = null;
+        HashMap<Long, BinfElement> handledData = cash.GetAlreadyHandledData();
+        if(handledData != null) {
+            gdbAddressesList = new HashMap(Help.WIN_MB);
+            Long keyToPut, newValue, previousValue;
+            Collection<BinfElement> allmemCollection = handledData.values();
+            for(BinfElement tmpBinfElement : allmemCollection ) {
+                keyToPut = GetBacktracePointer(tmpBinfElement).getValue();
+                newValue = GetMFreeSize(tmpBinfElement).getValue();
+                previousValue = gdbAddressesList.get(keyToPut);
+                if(previousValue != null) {
+                    newValue += previousValue;
+                }
+                gdbAddressesList.put(keyToPut, newValue);
+            }
+        }
+        return gdbAddressesList;
     }
 
     public static class BinAnalyzerResults

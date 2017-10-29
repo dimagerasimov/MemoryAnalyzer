@@ -89,7 +89,7 @@ public class ConnectThread extends Thread {
                 return;
             }
 
-            viewerThread = new ViewerThread(parent, stream);
+            viewerThread = new ViewerThread(parent, connect_struct.remotePath, stream);
             viewerThread.start();
             
             /// Ask results (this hack) ///
