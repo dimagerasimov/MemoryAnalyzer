@@ -16,7 +16,7 @@
 
 typedef unsigned char byte;
 
-#define CONNECTION_TIMEOUT 15
+#define CONNECTION_TIMEOUT 180
 
 #define MAX_COMMAND_LENGTH 16
 #define MAX_MESSAGE_LENGTH 256
@@ -34,6 +34,9 @@ typedef unsigned char byte;
 #define BYE "bye"
 #define PIN_INIT "p_in"
 #define PIN_EXEC "p_ex"
+#define GDB_RUN "g_ru"
+#define GDB_REQUEST "g_rq"
+#define GDB_STOP "g_st"
 #define GET_BINARY "gbin"
 
 bool isBigEndian();

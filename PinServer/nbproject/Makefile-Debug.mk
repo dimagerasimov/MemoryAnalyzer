@@ -35,6 +35,7 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/gdb_loader.o \
 	${OBJECTDIR}/main.o \
 	${OBJECTDIR}/map_clients.o \
 	${OBJECTDIR}/notice_manager.o \
@@ -80,6 +81,11 @@ LDLIBSOPTIONS=
 ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pinserver: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pinserver ${OBJECTFILES} ${LDLIBSOPTIONS} -pthread
+
+${OBJECTDIR}/gdb_loader.o: gdb_loader.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/gdb_loader.o gdb_loader.cpp
 
 ${OBJECTDIR}/main.o: main.cpp 
 	${MKDIR} -p ${OBJECTDIR}
@@ -148,6 +154,19 @@ ${TESTDIR}/tests/pin_serverTests.o: tests/pin_serverTests.cpp
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -I. -MMD -MP -MF "$@.d" -o ${TESTDIR}/tests/pin_serverTests.o tests/pin_serverTests.cpp
 
+
+${OBJECTDIR}/gdb_loader_nomain.o: ${OBJECTDIR}/gdb_loader.o gdb_loader.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/gdb_loader.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/gdb_loader_nomain.o gdb_loader.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/gdb_loader.o ${OBJECTDIR}/gdb_loader_nomain.o;\
+	fi
 
 ${OBJECTDIR}/main_nomain.o: ${OBJECTDIR}/main.o main.cpp 
 	${MKDIR} -p ${OBJECTDIR}

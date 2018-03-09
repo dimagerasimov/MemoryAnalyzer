@@ -4,6 +4,7 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>gdb_loader.hpp</itemPath>
       <itemPath>map_clients.hpp</itemPath>
       <itemPath>notice_manager.hpp</itemPath>
       <itemPath>parser_protocol.hpp</itemPath>
@@ -19,6 +20,7 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>gdb_loader.cpp</itemPath>
       <itemPath>main.cpp</itemPath>
       <itemPath>map_clients.cpp</itemPath>
       <itemPath>notice_manager.cpp</itemPath>
@@ -97,6 +99,10 @@
           <commandLine>-pthread</commandLine>
         </linkerTool>
       </folder>
+      <item path="gdb_loader.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="gdb_loader.hpp" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="map_clients.cpp" ex="false" tool="1" flavor2="0">
@@ -187,6 +193,10 @@
           <commandLine>-pthread</commandLine>
         </linkerTool>
       </folder>
+      <item path="gdb_loader.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="gdb_loader.hpp" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="map_clients.cpp" ex="false" tool="1" flavor2="0">
