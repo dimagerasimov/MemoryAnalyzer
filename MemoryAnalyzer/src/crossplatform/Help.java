@@ -212,21 +212,4 @@ public class Help {
         }
         return pinServerProcess;
     }
-    public static Process runGdb(String path) {
-        Process gdbProcess = null;
-        try {
-             // Run the local server with default parameters
-             gdbProcess = Runtime.getRuntime().exec("gdb " + path);
-             if(gdbProcess != null) {
-                 if(!gdbProcess.isAlive()) {
-                     gdbProcess.destroyForcibly();
-                     gdbProcess = null;
-                 }
-             }
-         }
-        catch(IOException ex) {
-            gdbProcess = null;
-        }
-        return gdbProcess;
-    }
 }

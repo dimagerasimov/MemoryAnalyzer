@@ -12,26 +12,38 @@ import common.MsgBox;
 import common.GlobalVariables;
 import fast_chart.FastChart;
 import memoryanalyzer.MainForm;
+import network.GdbResultReceiver.ConnectGdbStruct;
+import network.PinConnectThread.ConnectPinStruct;
 
 /**
  *
  * @author master
  */
 public class ViewerThread extends Thread {
-    public ViewerThread(MainForm feedback, String pathToBinaryFile) {
+    public ViewerThread(final MainForm feedback, final String pathToBinaryFile) {
         super();
-        pathToApp = pathToBinaryFile;
+        connectGdbInfo = null;
         this.feedback = feedback;
         readerThread = new ReaderThread(pathToBinaryFile);
     }
-    public ViewerThread(MainForm feedback, String remotePath, DataInputStream dis) {
+
+    public ViewerThread(final MainForm feedback, final ConnectPinStruct connectInfo,
+            final DataInputStream dis) {
         super();
-        pathToApp = remotePath;
+        connectGdbInfo = repackPinToGdbStruct(connectInfo);
         this.feedback = feedback;
         readerThread = new ReaderThread(dis);
     }
+
+    private static ConnectGdbStruct repackPinToGdbStruct(final ConnectPinStruct connectPinStruct) {
+        ConnectGdbStruct connectGdbStruct = new ConnectGdbStruct();
+        connectGdbStruct.ip = connectPinStruct.ip;
+        connectGdbStruct.port = connectPinStruct.port;
+        connectGdbStruct.remotePath = connectPinStruct.remotePath;
+        return connectGdbStruct;
+    }
     
-    private void AddChartsToForm(BinAnalyzerResults results)
+    private void AddChartsToForm(final BinAnalyzerResults results)
     {
         FastChart chart1, chart2;
         chart1 = chart2 = null;
@@ -50,10 +62,10 @@ public class ViewerThread extends Thread {
         feedback.addChartToPanel2(chart2);
         feedback.repaint();
     }
-    
+
     @Override
     public void run() {
-        HashMap<Long, Long> gdbThreadInfo = null;
+        HashMap<Long, Long> gdbAddressesList = null;
         feedback.setEnabled(false);
         try {
             readerThread.start();
@@ -69,7 +81,7 @@ public class ViewerThread extends Thread {
                 readerThread.GetStreamCash().UpdateUnhandledData();
                 BinAnalyzer.MakeAnalyzeMFree(readerThread.GetStreamCash());
                 AddChartsToForm(readerThread.GetStreamCash().GetAnalyzerResults());
-                gdbThreadInfo = BinAnalyzer.MakeGdbAddressesList(readerThread.GetStreamCash());
+                gdbAddressesList = BinAnalyzer.MakeGdbAddressesList(readerThread.GetStreamCash());
             }
             else {
                 new MsgBox(feedback, "Error!", readerThread.getErrorMessage(),
@@ -82,17 +94,15 @@ public class ViewerThread extends Thread {
             new MsgBox(feedback, "Error!", "Viewing was interrupted!",
                 MsgBox.ACTION_OK).setVisible(true);
         }
-
-        //Next steps depend on existing of gdb information
-        feedback.setEnabled(true);
-        if(pathToApp != null && gdbThreadInfo != null) {
-            GdbThread gdbThread = new GdbThread(feedback, pathToApp, gdbThreadInfo);
+        if(connectGdbInfo != null && gdbAddressesList != null) {
+            GdbThread gdbThread = new GdbThread(feedback, connectGdbInfo, gdbAddressesList);
             gdbThread.start();
         }
+        feedback.setEnabled(true);
     }
-    
+
     // Private variables
-    private final String pathToApp;
-    private final MainForm feedback;  
+    private final ConnectGdbStruct connectGdbInfo;
+    private final MainForm feedback;
     private final ReaderThread readerThread;
 }

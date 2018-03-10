@@ -15,30 +15,30 @@ import crossplatform.Help;
  *
  * @author master
  */
-public class PinClient {
-    public PinClient() throws IOException {
+public class NetClient {
+    public NetClient() throws IOException {
         clientSocket = null;
         do {
-            pinSocket = getValidServerSocket();
-        } while(pinSocket == null);
-        pinSocket.setSoTimeout(Protocol.TRANSLATION_TIMEOUT * 1000);
+            serverSocket = getValidServerSocket();
+        } while(serverSocket == null);
+        serverSocket.setSoTimeout(Protocol.TRANSLATION_TIMEOUT * 1000);
     }
     
     public void dispose() {
-        if(pinSocket == null) {
+        if(serverSocket == null) {
             return;
         }
         try {
-            pinSocket.close();
+            serverSocket.close();
         } catch (IOException ex) {
             // DO NOTHING
         }
-        pinSocket = null;
+        serverSocket = null;
     }
     
     public boolean accept() {
         try {
-            clientSocket = pinSocket.accept();
+            clientSocket = serverSocket.accept();
             clientSocket.setSoTimeout(Protocol.CONNECTION_TIMEOUT * 1000);
         } catch (IOException ex) {
             return false;
@@ -71,17 +71,17 @@ public class PinClient {
     }
     
     public int getListenPort() {
-        return pinSocket.getLocalPort();
+        return serverSocket.getLocalPort();
     }
     
     private static ServerSocket getValidServerSocket() {
-        ServerSocket pinSocket;
+        ServerSocket serverSocket;
         try {
-            pinSocket = new ServerSocket(getRandomPort());
+            serverSocket = new ServerSocket(getRandomPort());
         } catch(IOException ex) {
-            pinSocket = null;
+            serverSocket = null;
         }
-        return pinSocket;
+        return serverSocket;
     }
     
     private static int getRandomPort() {
@@ -90,6 +90,6 @@ public class PinClient {
     }
     
     // Private variables
-    private ServerSocket pinSocket;
+    private ServerSocket serverSocket;
     private Socket clientSocket;
 }

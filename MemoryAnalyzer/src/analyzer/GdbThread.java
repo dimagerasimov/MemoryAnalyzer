@@ -8,6 +8,7 @@ package analyzer;
 import java.util.HashMap;
 import memoryanalyzer.GdbForm;
 import memoryanalyzer.MainForm;
+import network.GdbResultReceiver.ConnectGdbStruct;
 
 /**
  *
@@ -25,7 +26,7 @@ public class GdbThread extends Thread {
         public int GetState() {
             return state;
         }
-        public void SetState(int state) {
+        public void SetState(final int state) {
             this.state = state;
         }
 
@@ -33,16 +34,17 @@ public class GdbThread extends Thread {
         private int state;
     }
 
-    GdbThread(MainForm feedback, String pathToApp, HashMap<Long, Long> gdbThreadInfo) {
+    GdbThread(final MainForm feedback, final ConnectGdbStruct connectInfo,
+            final HashMap<Long, Long> gdbThreadInfo) {
         this.feedback = feedback;
-        this.pathToApp = pathToApp;
+        this.connectInfo = connectInfo;
         this.gdbThreadInfo = gdbThreadInfo;
     }
 
     @Override
     public void run() {
         GdbThreadFeedback gdbThreadFeedback = new GdbThreadFeedback();
-        GdbForm gdbForm = new GdbForm(feedback, gdbThreadFeedback, pathToApp, gdbThreadInfo);
+        GdbForm gdbForm = new GdbForm(feedback, gdbThreadFeedback, connectInfo, gdbThreadInfo);
         try {
             while(gdbThreadFeedback.state == GdbThreadFeedback.NOT_DEFINED) {
                 Thread.sleep(1000);
@@ -55,6 +57,6 @@ public class GdbThread extends Thread {
     }
     
     private final MainForm feedback;
-    private final String pathToApp;
+    private final ConnectGdbStruct connectInfo;
     private final HashMap<Long, Long> gdbThreadInfo;
 }

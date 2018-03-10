@@ -19,15 +19,15 @@ import memoryanalyzer.MainForm;
  *
  * @author master
  */
-public class ConnectThread extends Thread {    
-    public static class ConnectThreadStruct {
+public class PinConnectThread extends Thread {    
+    public static class ConnectPinStruct {
         public String ip;
         public int port;
         public String remotePath;
         public String programArguments;
     }
-    public ConnectThread(MainForm parent,
-            ConnectThreadStruct connect_struct, String tmpResultsFileName) {
+    public PinConnectThread(MainForm parent,
+            ConnectPinStruct connect_struct, String tmpResultsFileName) {
         super();
         this.parent = parent;
         this.connect_struct = connect_struct;
@@ -37,12 +37,12 @@ public class ConnectThread extends Thread {
      @Override
     public void run() {
         parent.setEnabled(false);
-        PinClient pinClient = null;
+        NetClient pinClient = null;
         Socket clientSocket = null;
         ViewerThread viewerThread = null;
         try {
             // Pin client need for online-translation
-            pinClient = new PinClient();
+            pinClient = new NetClient();
             // Usual client need for communication with server
             clientSocket = new Socket(connect_struct.ip, connect_struct.port);
             clientSocket.setSoTimeout(Protocol.CONNECTION_TIMEOUT * 1000);
@@ -52,8 +52,8 @@ public class ConnectThread extends Thread {
             dos.writeUTF(Protocol.HI);            
             if(!dis.readUTF().equals(Protocol.HI)) {
                 interruptCommunicationWithServer(clientSocket, dos,
-                        "In this moment server can't process "
-                        + "the current task (ip=\"" + connect_struct.ip
+                        "Server can't process the current request "
+                        + "(ip=\"" + connect_struct.ip
                         + "\", port=\"" + String.valueOf(connect_struct.port) + "\").");
                 return;
             }
@@ -63,7 +63,7 @@ public class ConnectThread extends Thread {
                 + Protocol.ARGS_DELIMITER + connect_struct.programArguments);
             if(dis.readUTF().equals(Protocol.ERROR)) {
                 interruptCommunicationWithServer(clientSocket, dos,
-                        "Error! Check the path to application (ip=\""
+                        "Error! Check the application path (ip=\""
                         + connect_struct.ip + "\", port=\""
                         + String.valueOf(connect_struct.port) + "\").");
                 return;
@@ -72,7 +72,7 @@ public class ConnectThread extends Thread {
             dos.writeUTF(Protocol.PIN_EXEC);
             if(dis.readUTF().equals(Protocol.ERROR)) {
                 interruptCommunicationWithServer(clientSocket, dos,
-                        "Internal error on the server (ip=\""
+                        "Server internal error (ip=\""
                         + connect_struct.ip + "\", port=\""
                         + String.valueOf(connect_struct.port) + "\").");              
                 return;
@@ -83,13 +83,13 @@ public class ConnectThread extends Thread {
             DataInputStream stream = pinClient.getDataInputStream();
             if(!isOk || stream == null) {
                 interruptCommunicationWithServer(clientSocket, dos,
-                        "Problem of incoming connection for online-translation (ip=\""
+                        "Incoming connection problem for online-translation (ip=\""
                         + connect_struct.ip + "\", port=\""
                         + String.valueOf(pinClient.getListenPort()) + "\").");  
                 return;
             }
 
-            viewerThread = new ViewerThread(parent, connect_struct.remotePath, stream);
+            viewerThread = new ViewerThread(parent, connect_struct, stream);
             viewerThread.start();
             
             /// Ask results (this hack) ///
@@ -117,7 +117,7 @@ public class ConnectThread extends Thread {
             } catch(IOException ex) {
                 interruptCommunicationWithServer(clientSocket, dos,
                         "Unable to save results...\n"
-                        + "May be don't exists path \"" + Help.GetTmpFolderPath()
+                        + "May be path doesn't exist \"" + Help.GetTmpFolderPath()
                         + "\"."); 
                 return;
             }
@@ -125,7 +125,6 @@ public class ConnectThread extends Thread {
             clientSocket.close();
              
             parent.setEnabled(true);
-            
         } catch (InterruptedException | IOException ex) {
             if(viewerThread != null && !viewerThread.isInterrupted()) {
                 viewerThread.interrupt();
@@ -177,6 +176,6 @@ public class ConnectThread extends Thread {
     
     // Private variables
     private final MainForm parent;
-    private final ConnectThreadStruct connect_struct;
+    private final ConnectPinStruct connect_struct;
     private final String tmpResultsFileName;
 }

@@ -32,11 +32,8 @@ public class MsgBox extends javax.swing.JFrame {
             }
         }
         //If frame feedback was enabled then code below changes state
-        if(!retJFrame.isEnabled()) {
-            lock = false;
-        }
-        else {
-            lock = true;
+        was_locked = retJFrame.isEnabled();
+        if (was_locked) {
             retJFrame.setEnabled(false);
         }
         // Remember action on close
@@ -161,7 +158,7 @@ public class MsgBox extends javax.swing.JFrame {
                 break;
             default:
                 //Enable a frame which called the MsgBox
-                if(lock) {
+                if(was_locked) {
                     retJFrame.setEnabled(true);
                 }
                 retJFrame.setDefaultCloseOperation(action_on_close);
@@ -188,7 +185,7 @@ public class MsgBox extends javax.swing.JFrame {
     
     private final JFrame retJFrame;
     private final int key_action;
-    private final boolean lock;
+    private final boolean was_locked;
     private final int action_on_close;
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

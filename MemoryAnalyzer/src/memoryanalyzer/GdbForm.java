@@ -10,13 +10,12 @@ import java.awt.Point;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.TreeMap;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.IOException;
 import javax.swing.DefaultListModel;
 import analyzer.GdbThread.GdbThreadFeedback;
 import common.MsgBox;
-import crossplatform.Help;
+import network.GdbResultReceiver;
+import network.GdbResultReceiver.ConnectGdbStruct;
 
 /**
  *
@@ -25,15 +24,15 @@ import crossplatform.Help;
 public class GdbForm extends javax.swing.JFrame {
 
     private static class ErrorListEntry {
-        private final long sizeOfMemory;
+        private final long memorySize;
         private final long gdbAddress;
         
-        public ErrorListEntry(long sizeOfMemory, long gdbAddress) {
-            this.sizeOfMemory = sizeOfMemory;
+        public ErrorListEntry(long memorySize, long gdbAddress) {
+            this.memorySize = memorySize;
             this.gdbAddress = gdbAddress;
         }
-        public long GetSizeOfMemory() {
-            return sizeOfMemory;
+        public long GetMemorySize() {
+            return memorySize;
         }
         public long GetGdbAddress() {
             return gdbAddress;
@@ -41,34 +40,40 @@ public class GdbForm extends javax.swing.JFrame {
     }
 
     public GdbForm(MainForm linkToMainForm, GdbThreadFeedback gdbThreadFeedback,
-            String path, HashMap<Long, Long> gdbResults) {
+            ConnectGdbStruct connectGdbInfo, HashMap<Long, Long> gdbResults) {
         initComponents();
         setCenterLocation();
 
-        //Remove this line somehow
-        path = path.replaceAll(".out", "");
-
+        GdbResultReceiver mokeUpGdbResultReceiver = null;
+        try {
+            mokeUpGdbResultReceiver  = new GdbResultReceiver(connectGdbInfo);
+        } catch (IOException ex) {
+            gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
+                new MsgBox(this, "Not available GDB!", "GDB in remote server can't be accessed.",
+                        MsgBox.ACTION_CLOSE).setVisible(true);
+        }
+        gdbResultReceiver = mokeUpGdbResultReceiver;
+        gdbResultReceiver.start();
         ErrorListEntry[] entries = null;
         if (gdbResults == null || gdbResults.isEmpty()) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
             new MsgBox(this, "Congratuations!", "No memory leaks in application.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
-        else if(!IsDebuggingSymbolsInApp(path)) {
+        else if(!gdbResultReceiver.IsDebuggingSymbolsInApp()) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
             new MsgBox(this, "No info!", "Unfortunately this application contains no debug info. " + 
-                    "If you have source code you can build this one with \"-g\" flag.",
+                    "If you have source code you can build this one with \"-g\" flag by yourself and retry.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
         else {
-            entries = MakeErrorListEntries(path, gdbResults);
+            entries = MakeErrorListEntries(gdbResults);
             if(entries == null) {
                 gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
                 new MsgBox(this, "No source code!", "Application source code is not found.",
                         MsgBox.ACTION_CLOSE).setVisible(true);
             }
         }
-        pathToApp = path;
         errorListEntries = entries;
         beginningSelectedIndex = 0;
         endSelectedIndex = 0;
@@ -90,81 +95,6 @@ public class GdbForm extends javax.swing.JFrame {
         this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
     }
 
-    private static String ReadTextFromStream(InputStream dis) throws IOException {
-        byte[] bytes = new byte[2048];
-        int numBytes = (dis.available() < bytes.length) ? dis.available() : bytes.length;
-        if(numBytes > 0) {
-            dis.read(bytes, 0, numBytes);
-        }
-        String text = "";
-        for(int i = 0; i < numBytes; i++) {
-            text += (char)bytes[i];
-        }
-        return text;
-    }
-
-    private static void WriteTextToStream(OutputStream dos, String text) throws Exception {
-        byte[] bytes = text.getBytes();
-        dos.write(bytes);
-        dos.flush();
-        Thread.sleep(100);
-    }
-
-    private static String GetInfoFromGdb(String pathToApp, String address) {
-        String info = "";
-        Process gdbProcess = Help.runGdb(pathToApp);
-        if(gdbProcess != null) {
-            InputStream dis = gdbProcess.getInputStream();
-            OutputStream dos = gdbProcess.getOutputStream();
-            try {
-                WriteTextToStream(dos, "list *" + address + "\r\n");
-                WriteTextToStream(dos, "q\r\n");
-
-                info = ReadTextFromStream(dis);
-
-                if(gdbProcess.isAlive()) {
-                    gdbProcess.destroy();
-                }
-            }
-            catch (Exception ex) {
-                gdbProcess.destroy();
-            }
-        }
-        return info;
-    }
-
-    private static boolean IsDebuggingSymbolsInApp(String pathToApp) {
-        String info = GetInfoFromGdb(pathToApp, "0x0000");
-        return info.contains("Reading symbols from") && info.contains("...done");
-    }
-
-    private static String GetCodeWithTitleFromGdb(String pathToApp, String address) {
-        int index;
-        boolean isOk = true;
-        String textToFind;
-        String sourceText = GetInfoFromGdb(pathToApp, address);
-        textToFind = " is in ";
-        index = sourceText.indexOf(textToFind);
-        isOk = isOk && (index != -1);
-        if(isOk) {
-            sourceText = sourceText.substring(index + textToFind.length(), sourceText.length());
-        }
-        textToFind = "(gdb)";
-        index = sourceText.indexOf(textToFind);
-        isOk = isOk && (index != -1);
-        if(isOk) {
-            sourceText = sourceText.substring(0, index);
-        }
-        return isOk ? sourceText : "";
-    }
-
-    private static String GetTitleOfEntry(String pathToApp, String address) {
-        String titleOfEntry = GetCodeWithTitleFromGdb(pathToApp, address);
-        int endLineIndex = titleOfEntry.indexOf(".\n");
-        titleOfEntry = (endLineIndex != -1) ? titleOfEntry.substring(0, endLineIndex) : "";
-        return titleOfEntry;
-    }
-
     private static int GetNumberLineToSelect(String text) {
         int index;
         boolean isOk = true;
@@ -184,7 +114,7 @@ public class GdbForm extends javax.swing.JFrame {
         return isOk ? Integer.parseInt(text) : -1;
     }
 
-    private ErrorListEntry[] MakeErrorListEntries(String path, HashMap<Long, Long> gdbResults) {
+    private ErrorListEntry[] MakeErrorListEntries(HashMap<Long, Long> gdbResults) {
         Set<Long> setOfKeys = gdbResults.keySet();
         TreeMap<Long, Long> sortTree = new TreeMap();
         long tmpSizeOfMemory;
@@ -203,12 +133,12 @@ public class GdbForm extends javax.swing.JFrame {
         }
         String titleOfEntry;
         for(int i = 0; i < entries.length; i++) {
-            titleOfEntry = GetTitleOfEntry(path, String.valueOf(entries[i].GetGdbAddress()));
-            if(titleOfEntry.equals("")) {
+            titleOfEntry = gdbResultReceiver.GetTitleOfEntry(entries[i].GetGdbAddress());
+            if(titleOfEntry.isEmpty()) {
                 entries = null;
                 break;
             }
-            model.addElement((i + 1) + ". " + titleOfEntry + " - " + entries[i].GetSizeOfMemory() + " bytes");
+            model.addElement((i + 1) + ". " + titleOfEntry + " - " + entries[i].GetMemorySize() + " bytes");
         }
         if(entries != null) {
             jErrorList.setModel(model);
@@ -248,7 +178,7 @@ public class GdbForm extends javax.swing.JFrame {
         });
 
         jErrorListTitle.setFont(new java.awt.Font("Ubuntu", 0, 17)); // NOI18N
-        jErrorListTitle.setText("List of memory leaks:");
+        jErrorListTitle.setText("Memory leaks' list");
 
         jSourceCodeLabel.setFont(new java.awt.Font("Ubuntu", 0, 17)); // NOI18N
         jSourceCodeLabel.setText("Source code:");
@@ -307,28 +237,36 @@ public class GdbForm extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jErrorListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_jErrorListValueChanged
+        this.setEnabled(false);
         int selectedIndex = jErrorList.getSelectedIndex();
         int numberLineToSelect = -1;
         String text = "";
         if(selectedIndex != -1) {
             long gdbAddress = errorListEntries[selectedIndex].GetGdbAddress();
-            text = GetCodeWithTitleFromGdb(pathToApp, String.valueOf(gdbAddress));
+            text = gdbResultReceiver.GetCodeWithTitleFromGdb(gdbAddress);
+            if (text.isEmpty()) {
+                new MsgBox(this, "The connection is lost!", "Time is over or another connection issue.",
+                        MsgBox.ACTION_CLOSE).setVisible(true);
+            }
             numberLineToSelect = GetNumberLineToSelect(text);
             //Remove the title
             String textToFind = ".\n";
             int endLineIndex = text.indexOf(textToFind);
             text = (endLineIndex != -1) ? text.substring(endLineIndex + textToFind.length()) : "";
         }
-        jTextArea.setText(text);
-        beginningSelectedIndex = endSelectedIndex = -1;
-        if(numberLineToSelect != -1) {
-            beginningSelectedIndex = text.indexOf(numberLineToSelect + "\t");
-            String substr = text.substring(beginningSelectedIndex);
-            endSelectedIndex = substr.indexOf("\n");
-            if(beginningSelectedIndex != -1 && endSelectedIndex != -1) {
-                jTextArea.select(beginningSelectedIndex, beginningSelectedIndex + endSelectedIndex);
+        if (!text.isEmpty()) {
+            jTextArea.setText(text);
+            beginningSelectedIndex = endSelectedIndex = -1;
+            if(numberLineToSelect != -1) {
+                beginningSelectedIndex = text.indexOf(numberLineToSelect + "\t");
+                String substr = text.substring(beginningSelectedIndex);
+                endSelectedIndex = substr.indexOf("\n");
+                if(beginningSelectedIndex != -1 && endSelectedIndex != -1) {
+                    jTextArea.select(beginningSelectedIndex, beginningSelectedIndex + endSelectedIndex);
+                }
             }
         }
+        this.setEnabled(!text.isEmpty());
     }//GEN-LAST:event_jErrorListValueChanged
 
     private void KeepLineSelected() {
@@ -351,12 +289,13 @@ public class GdbForm extends javax.swing.JFrame {
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
         feedback.setEnabled(true);
+        gdbResultReceiver.stop();
     }//GEN-LAST:event_formWindowClosed
 
     private int beginningSelectedIndex;
     private int endSelectedIndex;
-    private final String pathToApp;
     private final ErrorListEntry[] errorListEntries;
+    private final GdbResultReceiver gdbResultReceiver;
     private final MainForm feedback;
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

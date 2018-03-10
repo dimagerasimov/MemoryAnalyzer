@@ -15,8 +15,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import common.MsgBox;
 import common.WaitBox;
 import crossplatform.Help;
-import network.ConnectThread;
-import network.ConnectThread.ConnectThreadStruct;
+import network.PinConnectThread;
+import network.PinConnectThread.ConnectPinStruct;
 import network.Protocol;
 
 /**
@@ -325,7 +325,7 @@ public class FormConnectTo extends javax.swing.JFrame {
 
         parent.resetFormForNewAnalyze();
         
-        ConnectThreadStruct connect_struct = new ConnectThreadStruct();
+        ConnectPinStruct connect_struct = new ConnectPinStruct();
         connect_struct.ip = ip;
         connect_struct.port = port;
         connect_struct.programArguments = jTextFieldArgumentsProgram.getText(
@@ -336,7 +336,7 @@ public class FormConnectTo extends javax.swing.JFrame {
         connect_struct.remotePath = jTextFieldRemotePath.getText(
                 ).replaceAll(Protocol.COM_DELIMITER, "").replaceAll(Protocol.ARGS_DELIMITER, "");
 
-        ConnectThread connectThread = new ConnectThread( parent, connect_struct,
+        PinConnectThread connectThread = new PinConnectThread( parent, connect_struct,
                 parent.getTmpResultsFileName());
         WaitBox threadWaitBox = new WaitBox("Receiving data...");
         threadWaitBox.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
