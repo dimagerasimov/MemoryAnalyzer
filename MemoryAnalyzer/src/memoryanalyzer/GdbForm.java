@@ -95,23 +95,20 @@ public class GdbForm extends javax.swing.JFrame {
         this.setLocation(p.x - this.getWidth() / 2, p.y - this.getHeight() / 2);
     }
 
-    private static int GetNumberLineToSelect(String text) {
-        int index;
-        boolean isOk = true;
-        String textToFind;
-        textToFind = ":";
-        index = text.indexOf(textToFind);
-        isOk = isOk && (index != -1);
-        if(isOk) {
-            text = text.substring(index + textToFind.length(), text.length());
+    private static int GetNumberLineToSelect(final String text) {
+        String modifiedText = text.split("\n")[0];
+        final int indexOfSpecialSymbol1 = modifiedText.lastIndexOf(":");
+        final int indexOfSpecialSymbol2 = modifiedText.indexOf(")", indexOfSpecialSymbol1);
+
+        int resultNumberLine = -1;
+        if ((indexOfSpecialSymbol1 != -1) && (indexOfSpecialSymbol2 != -1)) {
+            modifiedText = modifiedText.substring(indexOfSpecialSymbol1 + 1, indexOfSpecialSymbol2);
+            try {
+                resultNumberLine = Integer.parseInt(modifiedText);
+            } catch (Exception ex) {
+            }
         }
-        textToFind = ")";
-        index = text.indexOf(textToFind);
-        isOk = isOk && (index != -1);
-        if(isOk) {
-            text = text.substring(0, index);
-        }
-        return isOk ? Integer.parseInt(text) : -1;
+        return resultNumberLine;
     }
 
     private ErrorListEntry[] MakeErrorListEntries(HashMap<Long, Long> gdbResults) {
@@ -135,14 +132,11 @@ public class GdbForm extends javax.swing.JFrame {
         for(int i = 0; i < entries.length; i++) {
             titleOfEntry = gdbResultReceiver.GetTitleOfEntry(entries[i].GetGdbAddress());
             if(titleOfEntry.isEmpty()) {
-                entries = null;
-                break;
+                titleOfEntry = "addr. 0x" + Long.toHexString(entries[i].gdbAddress);
             }
             model.addElement((i + 1) + ". " + titleOfEntry + " - " + entries[i].GetMemorySize() + " bytes");
         }
-        if(entries != null) {
-            jErrorList.setModel(model);
-        }
+        jErrorList.setModel(model);
         return entries;
     }
 
@@ -155,25 +149,18 @@ public class GdbForm extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jErrorList = new javax.swing.JList<>();
         jErrorListTitle = new javax.swing.JLabel();
         jSourceCodeLabel = new javax.swing.JLabel();
         jTextArea = new javax.swing.JTextArea();
+        jScrollErrorListPane = new javax.swing.JScrollPane();
+        jErrorList = new javax.swing.JList<>();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Results from GDB");
+        setPreferredSize(new java.awt.Dimension(672, 530));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
-            }
-        });
-
-        jErrorList.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
-        jErrorList.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
-        jErrorList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        jErrorList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
-            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
-                jErrorListValueChanged(evt);
             }
         });
 
@@ -203,16 +190,27 @@ public class GdbForm extends javax.swing.JFrame {
             }
         });
 
+        jErrorList.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        jErrorList.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
+        jErrorList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        jErrorList.setVisibleRowCount(4);
+        jErrorList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                jErrorListValueChanged(evt);
+            }
+        });
+        jScrollErrorListPane.setViewportView(jErrorList);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jTextArea, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 648, Short.MAX_VALUE)
-                    .addComponent(jErrorList, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jScrollErrorListPane)
+                    .addComponent(jTextArea, javax.swing.GroupLayout.DEFAULT_SIZE, 648, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jSourceCodeLabel)
                             .addComponent(jErrorListTitle))
@@ -225,11 +223,11 @@ public class GdbForm extends javax.swing.JFrame {
                 .addGap(6, 6, 6)
                 .addComponent(jSourceCodeLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTextArea, javax.swing.GroupLayout.DEFAULT_SIZE, 266, Short.MAX_VALUE)
+                .addComponent(jTextArea, javax.swing.GroupLayout.DEFAULT_SIZE, 226, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jErrorListTitle)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jErrorList, javax.swing.GroupLayout.PREFERRED_SIZE, 163, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jScrollErrorListPane, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
@@ -244,17 +242,19 @@ public class GdbForm extends javax.swing.JFrame {
         if(selectedIndex != -1) {
             long gdbAddress = errorListEntries[selectedIndex].GetGdbAddress();
             text = gdbResultReceiver.GetCodeWithTitleFromGdb(gdbAddress);
-            if (text.isEmpty()) {
-                new MsgBox(this, "The connection is lost!", "Time is over or another connection issue.",
-                        MsgBox.ACTION_CLOSE).setVisible(true);
-            }
             numberLineToSelect = GetNumberLineToSelect(text);
             //Remove the title
             String textToFind = ".\n";
             int endLineIndex = text.indexOf(textToFind);
             text = (endLineIndex != -1) ? text.substring(endLineIndex + textToFind.length()) : "";
         }
-        if (!text.isEmpty()) {
+        if (text.isEmpty()) {
+            jTextArea.setText("Not possible to get information "
+                    + "in respect of this item right now...\r\n"
+                    + "Possible problems:\r\n"
+                    + "- The connection timeout is over.\r\n"
+                    + "- No info regarding to chosen address from GDB.");
+        } else {
             jTextArea.setText(text);
             beginningSelectedIndex = endSelectedIndex = -1;
             if(numberLineToSelect != -1) {
@@ -266,7 +266,7 @@ public class GdbForm extends javax.swing.JFrame {
                 }
             }
         }
-        this.setEnabled(!text.isEmpty());
+        this.setEnabled(true);
     }//GEN-LAST:event_jErrorListValueChanged
 
     private void KeepLineSelected() {
@@ -301,6 +301,7 @@ public class GdbForm extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JList<String> jErrorList;
     private javax.swing.JLabel jErrorListTitle;
+    private javax.swing.JScrollPane jScrollErrorListPane;
     private javax.swing.JLabel jSourceCodeLabel;
     private javax.swing.JTextArea jTextArea;
     // End of variables declaration//GEN-END:variables
