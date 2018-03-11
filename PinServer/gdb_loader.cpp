@@ -74,7 +74,7 @@ bool GdbLoader :: GdbRun() {
     if (write(writepair_fd[1], run_comm, strlen(run_comm)) != strlen(run_comm)) {
         return false;
     }
-    usleep(200000U); //200 ms
+    usleep(1500000U); //1500 ms
     gdb_stdin = writepair_fd[1];
     gdb_stdout = readpair_fd[0];
     return true;
