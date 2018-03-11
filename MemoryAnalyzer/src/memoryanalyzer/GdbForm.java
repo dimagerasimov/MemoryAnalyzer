@@ -179,6 +179,11 @@ public class GdbForm extends javax.swing.JFrame {
                 jTextAreaMouseClicked(evt);
             }
         });
+        jTextArea.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextAreaKeyReleased(evt);
+            }
+        });
 
         jErrorList.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jErrorList.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
@@ -252,11 +257,10 @@ public class GdbForm extends javax.swing.JFrame {
                 beginningSelectedIndex = text.indexOf(numberLineToSelect + "\t");
                 String substr = text.substring(beginningSelectedIndex);
                 endSelectedIndex = substr.indexOf("\n");
-                if(beginningSelectedIndex != -1 && endSelectedIndex != -1) {
-                    jTextArea.select(beginningSelectedIndex, beginningSelectedIndex + endSelectedIndex);
-                }
             }
         }
+        jTextArea.requestFocusInWindow();
+        KeepLineSelected();
     }//GEN-LAST:event_jErrorListValueChanged
 
     private void KeepLineSelected() {
@@ -281,6 +285,10 @@ public class GdbForm extends javax.swing.JFrame {
         feedback.setEnabled(true);
         gdbResultReceiver.stop();
     }//GEN-LAST:event_formWindowClosed
+
+    private void jTextAreaKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextAreaKeyReleased
+        KeepLineSelected();
+    }//GEN-LAST:event_jTextAreaKeyReleased
 
     private int beginningSelectedIndex;
     private int endSelectedIndex;
