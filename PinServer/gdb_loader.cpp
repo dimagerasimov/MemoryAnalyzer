@@ -35,7 +35,19 @@ bool GdbLoader :: SetPathToApp(const char* pathToApp) {
         return false;
     }
 }
-bool GdbLoader :: GdbRun() {
+bool GdbLoader :: ReadStdout(char text[]) {
+    const unsigned int MAX_ATTEMPTS = 10U;
+    unsigned int cur_attempt = 0U;
+    unsigned int read_count = 0U;
+    do {
+        if (cur_attempt != 0U) { sleep(1); }
+        read_count += read(gdb_stdout, &text[read_count], 1024U);
+        text[read_count] = '\0';
+        ++cur_attempt;
+    } while (strstr(text, "(gdb)") == NULL && cur_attempt < MAX_ATTEMPTS);
+    return (strstr(text, "(gdb)") != NULL);
+}
+bool GdbLoader :: GdbRun(char answer[]) {
     // Test re-run
     if(gdb_proc != -1) {
         return false;
@@ -74,10 +86,10 @@ bool GdbLoader :: GdbRun() {
     if (write(writepair_fd[1], run_comm, strlen(run_comm)) != strlen(run_comm)) {
         return false;
     }
-    usleep(1500000U); //1500 ms
     gdb_stdin = writepair_fd[1];
     gdb_stdout = readpair_fd[0];
-    return true;
+    sleep(1);
+    return ReadStdout(answer);
 }
 bool GdbLoader :: GdbRequest(char requestText[], char* output_buffer, const int size_output_buffer) {
     if (gdb_proc == -1 || gdb_stdin == -1 || gdb_stdout == -1) {
@@ -87,12 +99,7 @@ bool GdbLoader :: GdbRequest(char requestText[], char* output_buffer, const int 
         return false;
     }
     usleep(100000U); //100 ms
-    const int read_count = read(gdb_stdout, output_buffer, size_output_buffer);
-    if (read_count == 0U) {
-        return false;
-    }
-    output_buffer[read_count] = '\0';
-    return (read_count != 0);
+    return ReadStdout(output_buffer);
 }
 bool GdbLoader :: GdbStop() {
     int status;

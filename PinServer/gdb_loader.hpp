@@ -22,7 +22,8 @@ class GdbLoader {
         ~GdbLoader();
         
         bool SetPathToApp(const char* pathToApp);
-        bool GdbRun();
+        bool ReadStdout(char text[]);
+        bool GdbRun(char answer[]);
         bool GdbRequest(char requestText[], char* output_buffer, const int size_output_buffer);
         bool GdbStop();
         

@@ -53,28 +53,18 @@ public class GdbForm extends javax.swing.JFrame {
                         MsgBox.ACTION_CLOSE).setVisible(true);
         }
         gdbResultReceiver = mokeUpGdbResultReceiver;
-        gdbResultReceiver.start();
-        ErrorListEntry[] entries = null;
         if (gdbResults == null || gdbResults.isEmpty()) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
             new MsgBox(this, "Congratuations!", "No memory leaks in application.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
-        else if(!gdbResultReceiver.IsDebuggingSymbolsInApp()) {
+        else if(!gdbResultReceiver.start()) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
             new MsgBox(this, "No info!", "Unfortunately this application contains no debug info. " + 
                     "If you have source code you can build this one with \"-g\" flag by yourself and retry.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
-        else {
-            entries = MakeErrorListEntries(gdbResults);
-            if(entries == null) {
-                gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
-                new MsgBox(this, "No source code!", "Application source code is not found.",
-                        MsgBox.ACTION_CLOSE).setVisible(true);
-            }
-        }
-        errorListEntries = entries;
+        errorListEntries = MakeErrorListEntries(gdbResults);
         beginningSelectedIndex = 0;
         endSelectedIndex = 0;
         feedback = linkToMainForm;
@@ -248,6 +238,8 @@ public class GdbForm extends javax.swing.JFrame {
             int endLineIndex = text.indexOf(textToFind);
             text = (endLineIndex != -1) ? text.substring(endLineIndex + textToFind.length()) : "";
         }
+        beginningSelectedIndex = endSelectedIndex = -1;
+        this.setEnabled(true);
         if (text.isEmpty()) {
             jTextArea.setText("Not possible to get information "
                     + "in respect of this item right now...\r\n"
@@ -256,7 +248,6 @@ public class GdbForm extends javax.swing.JFrame {
                     + "- No info regarding to chosen address from GDB.");
         } else {
             jTextArea.setText(text);
-            beginningSelectedIndex = endSelectedIndex = -1;
             if(numberLineToSelect != -1) {
                 beginningSelectedIndex = text.indexOf(numberLineToSelect + "\t");
                 String substr = text.substring(beginningSelectedIndex);
@@ -266,7 +257,6 @@ public class GdbForm extends javax.swing.JFrame {
                 }
             }
         }
-        this.setEnabled(true);
     }//GEN-LAST:event_jErrorListValueChanged
 
     private void KeepLineSelected() {

@@ -27,26 +27,22 @@ public class GdbResultReceiver {
         dis = new DataInputStream(clientSocket.getInputStream());
         dos = new DataOutputStream(clientSocket.getOutputStream());
         clientSocket.setSoTimeout(SOCKET_TIMEOUT);
+        bStarted = false;
     }
     
     @Override
     protected void finalize() {
         stop();
-        bye();
     }
     
     public boolean start() {
-        boolean result = hi();
-        if (result) {
+        boolean bStartResult = hi();
+        if (bStartResult) {
             final String serverAnswer = sendRequest(Protocol.GDB_RUN + Protocol.COM_DELIMITER + connect_struct.remotePath);
-            result = serverAnswer.equals(Protocol.SUCCESS);
+            bStartResult = serverAnswer.contains("Reading symbols from") && serverAnswer.contains("...done");
         }
-        return result;
-    }
-
-    public boolean IsDebuggingSymbolsInApp() {
-        final String serverAnswer = requestData((long)0x00000000);
-        return serverAnswer.contains("Reading symbols from") && serverAnswer.contains("...done");
+        bStarted = bStartResult;
+        return bStartResult;
     }
 
     public String GetCodeWithTitleFromGdb(final long address) {
@@ -77,7 +73,10 @@ public class GdbResultReceiver {
     }
 
     public void stop() {
-        sendRequest(Protocol.GDB_STOP);
+        if (bStarted) {
+            sendRequest(Protocol.GDB_STOP);
+        }
+        bStarted = false;
         bye();
     }
 
@@ -122,7 +121,9 @@ public class GdbResultReceiver {
             }
         } catch (IOException ex) {
             try {
-                clientSocket.setSoTimeout(RESET_TIMEOUT);
+                if (bStarted) {
+                    clientSocket.setSoTimeout(RESET_TIMEOUT);
+                }
             } catch (SocketException exx) {
             }
         }
@@ -130,6 +131,7 @@ public class GdbResultReceiver {
     }
 
     // Private variables
+    private boolean bStarted;
     private final ConnectGdbStruct connect_struct;
     private final Socket clientSocket;
     private final DataInputStream dis;

@@ -126,12 +126,13 @@ void* start_routine(void* arg) {
         {
             bool operation_result = parse_get_argument(
                     text_command, text_arg, 0, ARGS_DELIMITER);
+            char run_answer[4096];
             if (operation_result) {
                 gdbLoader.SetPathToApp(text_arg);
-                operation_result = gdbLoader.GdbRun();
+                operation_result = gdbLoader.GdbRun(run_answer);
             }
             if (operation_result) {
-                utf_text.setText(SUCCESS, strlen(SUCCESS));
+                utf_text.setText(run_answer, strlen(run_answer));
             }
             error_caused = !operation_result;
         }
