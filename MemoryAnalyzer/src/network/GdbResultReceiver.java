@@ -39,7 +39,8 @@ public class GdbResultReceiver {
         boolean bStartResult = hi();
         if (bStartResult) {
             final String serverAnswer = sendRequest(Protocol.GDB_RUN + Protocol.COM_DELIMITER + connect_struct.remotePath);
-            bStartResult = serverAnswer.contains("Reading symbols from") && serverAnswer.contains("...done");
+            bStartResult = serverAnswer.contains("Reading symbols from") && serverAnswer.contains("...done")
+                    && !serverAnswer.contains("no debugging symbols found");
         }
         bStarted = bStartResult;
         return bStartResult;

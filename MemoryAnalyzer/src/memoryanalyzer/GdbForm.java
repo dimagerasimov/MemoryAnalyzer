@@ -49,7 +49,8 @@ public class GdbForm extends javax.swing.JFrame {
             mokeUpGdbResultReceiver  = new GdbResultReceiver(connectGdbInfo);
         } catch (IOException ex) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
-                new MsgBox(this, "Not available GDB!", "GDB in remote server can't be accessed.",
+                new MsgBox(this, "Connection issue!",
+                        "Remote server can not be accessed from this computer.",
                         MsgBox.ACTION_CLOSE).setVisible(true);
         }
         gdbResultReceiver = mokeUpGdbResultReceiver;
@@ -58,10 +59,10 @@ public class GdbForm extends javax.swing.JFrame {
             new MsgBox(this, "Congratuations!", "No memory leaks in application.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
-        else if(!gdbResultReceiver.start()) {
+        if (!gdbResultReceiver.start()) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.CLOSED);
-            new MsgBox(this, "No info!", "Unfortunately this application contains no debug info. " + 
-                    "If you have source code you can build this one with \"-g\" flag by yourself and retry.",
+            new MsgBox(this, "No information!", "Unfortunately this application contains no debug info. " + 
+                    "If you have source code you can build it with \"-g\" flag by yourself and retry.",
                     MsgBox.ACTION_CLOSE).setVisible(true);
         }
         errorListEntries = MakeErrorListEntries(gdbResults);
