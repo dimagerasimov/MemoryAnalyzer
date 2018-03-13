@@ -7,10 +7,31 @@
 #include "net.h"
 
 /* ===================================================================== */
-/* Type declarations							*/
+/* Config							*/
 /* ===================================================================== */
 
-#define MAX_STR_LEN 256
+//#define LOG_LVL_INFO
+//#define LOG_LVL_ERR
+
+/* ===================================================================== */
+/* Debug defines							*/
+/* ===================================================================== */
+
+#ifdef LOG_LVL_INFO
+#define LOG_INFO(...) LogInfo(__VA_ARGS__)
+#else
+#define LOG_INFO(...)
+#endif /* LOG_LVL_INFO */
+
+#ifdef LOG_LVL_ERR
+#define LOG_ERR(...) LogError(__VA_ARGS__)
+#else
+#define LOG_ERR(...)
+#endif /* LOG_LVL_ERR */
+
+/* ===================================================================== */
+/* Type declarations							*/
+/* ===================================================================== */
 
 int (*p_backtrace) ( void**, int ); //pointer to backtrace function
 
@@ -24,11 +45,13 @@ typedef VOID ( *TYPE_FP_EXIT )( int );
 /* Global variables							*/
 /* ===================================================================== */
 
+const uint32_t MAX_STR_LEN = 512U;
+
 bool shared_bWasMainInvoked; //after main function in traced application it's true
 bool shared_bWasBacktraceTaken; //the flag indicates backtrace was taken or not
 
-const uint32_t MAX_QUEUE_SIZE = 32;
-const uint32_t UNEXISTING_THREAD_NUMBER = 0;
+const uint32_t MAX_QUEUE_SIZE = 32U;
+const uint32_t UNEXISTING_THREAD_NUMBER = 0U;
 OS_THREAD_ID arr_bUseUsualMallocFree[MAX_QUEUE_SIZE]; //the flag to use usual malloc and free in places where it's needed
 
 // Shared data
@@ -176,7 +199,7 @@ int ParseToPort(int argc, char* argv[]) {
 	return port;
 }
 VOID Ini( int argc, char* argv[] ) {
-	LogInfo((char*)"\n*** MEMORY TRACE ***\n");
+	LOG_INFO((char*)"\n*** MEMORY TRACE ***\n");
 	// Init pin mutex
 	PIN_MutexInit(&shared_pin_mutex);
 	// Init a binary journal
@@ -200,7 +223,7 @@ VOID Fini( VOID ) {
 
 	bool pushOk = shared_bin_journal->Push();
 	if(!pushOk) {
-		LogError((char*)
+		LOG_ERR((char*)
 		"Error: The binary journal hasn't been recorded. Try again.");
 	}
 	shared_transmitter->FlushAll();
@@ -363,7 +386,7 @@ bool ReplaceFunction(IMG* img, char* funcName) {
 		char message[MAX_STR_LEN];
 		sprintf(message, "\nFound \"%s\" function in module \"%s\"",
 			funcName, imgName);
-		LogInfo(message);
+		LOG_INFO(message);
 
 		bResult = RTN_Valid(rtn);
 		if(bResult)
@@ -416,7 +439,7 @@ bool ReplaceFunction(IMG* img, char* funcName) {
 		}
 		sprintf(message, "\tWas it replaced? %s\n",
 			bResult == true ? "YES" : "NO");
-		LogInfo(message);
+		LOG_INFO(message);
 	}
 	return bResult;
 }
@@ -451,7 +474,7 @@ VOID ImageLoad( IMG img, VOID *v )
 	{
 		char message[MAX_STR_LEN];
 		sprintf(message, "<--- Module \"%s\" ignored... --->", imgName);
-		LogInfo(message);
+		LOG_INFO(message);
 	}
 }
 
@@ -461,11 +484,13 @@ VOID ImageLoad( IMG img, VOID *v )
 
 INT32 Usage( VOID )
 {
-	cerr << "This tool replaces an original function \"malloc\"" << endl
-		<< " with a custom function \"MyMalloc\" defined in the tool " << endl
-		<< " using probes.  The replacement function has a different " << endl
-		<< " signature from that of the original replaced function." << endl
-		<< endl << KNOB_BASE::StringKnobSummary() << endl;
+	char message[MAX_STR_LEN];
+	sprintf(message, (char*)"This tool replaces an original function \"malloc\"\r\n"
+		" with a custom function \"MyMalloc\" defined in the tool\r\n"
+		" using probes.  The replacement function has a different\r\n"
+		" signature from that of the original replaced function.\r\n\r\n%s\r\n",
+		(char*)KNOB_BASE::StringKnobSummary().c_str());
+	LOG_ERR(message);
 	return -1;
 }
 
