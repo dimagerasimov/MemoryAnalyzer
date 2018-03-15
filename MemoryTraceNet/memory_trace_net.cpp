@@ -68,8 +68,7 @@ const uint32_t UNEXISTING_THREAD_NUMBER = 0U;
 OS_THREAD_ID arr_bUseUsualMallocFree[MAX_QUEUE_SIZE]; //flags to use usual malloc and free
 
 // Shared data
-bool shared_bMainDetected;
-bool shared_bBacktraceTaken;
+bool shared_bInsideMain;
 
 PIN_MUTEX shared_mutex;
 type_long shared_last_time;
@@ -193,7 +192,7 @@ type_ptr GetBacktracePointer()
 {
   const uint32_t BACKTRACE_BUFFER_SIZE = 16U;
   type_ptr result = (type_ptr)0xFFFFFFFF;
-  if (shared_bBacktraceTaken) {
+  if (p_backtrace != NULL) {
     void* buffer[BACKTRACE_BUFFER_SIZE];
     AddCurrentThreadTo(arr_bUseUsualMallocFree);
     // There is malloc in the backtrace function, it matters to use
@@ -214,7 +213,7 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
 {
   VOID * v = orgFuncptr( arg0 );
 
-  if (shared_bMainDetected //this malloc is after main function
+  if (shared_bInsideMain //this malloc is after main function
     && !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my malloc
 
     PIN_MutexLock(&shared_mutex);
@@ -251,7 +250,7 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
 {
   orgFuncptr( (size_t)arg0 );
 
-  if (shared_bMainDetected && //this free is after main function
+  if (shared_bInsideMain && //this free is after main function
     !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my free
 
     PIN_MutexLock(&shared_mutex);
@@ -274,7 +273,7 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
 }
 
 VOID NewMain( TYPE_FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
-  shared_bMainDetected = true;
+  shared_bInsideMain = true;
   orgFuncptr( arg0, (char**)arg1 );
 }
 
@@ -282,6 +281,7 @@ VOID NewMain( TYPE_FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
 VOID Fini( VOID );
 
 VOID NewExit( TYPE_FP_EXIT orgFuncptr, ADDRINT arg0) {
+  shared_bInsideMain = false;
   Fini();
   orgFuncptr( arg0 );
 }
@@ -361,7 +361,7 @@ VOID ImageLoad( IMG img, VOID *v )
 {
   char* imgName = (char*)IMG_Name(img).c_str();
 
-  if (!shared_bMainDetected)
+  if (!shared_bInsideMain)
   {// Replace the "main" function with my function only once
     ReplaceFunction(&img, (char*)MAIN);
   }
@@ -377,7 +377,6 @@ VOID ImageLoad( IMG img, VOID *v )
     ReplaceFunction(&img, (char*)EXIT);
     // Replace the "backtrace" function with my function
     ReplaceFunction(&img, (char*)BACKTRACE);
-    shared_bBacktraceTaken = (p_backtrace != NULL);
   }
   else
   {
@@ -408,9 +407,9 @@ VOID Ini( int argc, char* argv[] ) {
   shared_transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
   gettimeofday(&shared_start_time, NULL);
   // Init variables
+  p_backtrace = NULL;
   shared_last_time = 0;
-  shared_bMainDetected = false;
-  shared_bBacktraceTaken = false;
+  shared_bInsideMain = false;
   for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
     arr_bUseUsualMallocFree[i] = UNEXISTING_THREAD_NUMBER;
   }
