@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sys/time.h>
 #include <gnu/lib-names.h>
+#include <map>
 
 #include "bin_journal.h"
 #include "net.h"
@@ -63,9 +64,8 @@ int (*p_backtrace) ( void**, int ); //just a pointer to backtrace
 
 const uint32_t MAX_STR_LEN = 512U;
 
-const uint32_t MAX_QUEUE_SIZE = 32U;
-const uint32_t UNEXISTING_THREAD_NUMBER = 0U;
-OS_THREAD_ID arr_bUseUsualMallocFree[MAX_QUEUE_SIZE]; //flags to use usual malloc and free
+PIN_MUTEX mfMutex;
+map<OS_THREAD_ID, bool> mfQueue;
 
 // Shared data
 bool shared_bInsideMain;
@@ -116,45 +116,29 @@ int ParseToPort(int argc, char* argv[]) {
 /* Functions regarding to QUEUE with thread flags                        */
 /* ===================================================================== */
 
-void AddCurrentThreadTo(OS_THREAD_ID array[MAX_QUEUE_SIZE]) {
-  bool success = false;
-  OS_THREAD_ID current_thread_id = PIN_GetTid();
-  for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
-    if (array[i] == UNEXISTING_THREAD_NUMBER) {
-      array[i] = current_thread_id;
-      success = true;
-      break;
-    }
-  }
-  if (!success) {
-    //Terminate the current process
+bool IsThreadMfLocked() {
+  PIN_MutexLock(&mfMutex);
+  const bool bResult = (mfQueue.find(PIN_GetTid()) != mfQueue.end());
+  PIN_MutexUnlock(&mfMutex);
+  return bResult;
+}
+
+void LockThreadMf() {
+  if (IsThreadMfLocked()) {
     PIN_ExitProcess(1234);
   }
+  PIN_MutexLock(&mfMutex);
+  mfQueue[PIN_GetTid()] = true;
+  PIN_MutexUnlock(&mfMutex);
 }
 
-bool FindCurrentThreadIn(OS_THREAD_ID array[MAX_QUEUE_SIZE]) {
-  bool success = false;
-  OS_THREAD_ID current_thread_id = PIN_GetTid();
-  for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
-    if (array[i] == current_thread_id) {
-      success = true;
-      break;
-    }
+void UnlockThreadMf() {
+  if (!IsThreadMfLocked()) {
+    PIN_ExitProcess(1234);
   }
-  return success;
-}
-
-bool DeleteCurrentThreadIn(OS_THREAD_ID array[MAX_QUEUE_SIZE]) {
-  bool success = false;
-  OS_THREAD_ID current_thread_id = PIN_GetTid();
-  for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
-    if (array[i] == current_thread_id) {
-      array[i] = UNEXISTING_THREAD_NUMBER;
-      success = true;
-      break;
-    }
-  }
-  return success;
+  PIN_MutexLock(&mfMutex);
+  mfQueue.erase(mfQueue.find(PIN_GetTid()));
+  PIN_MutexUnlock(&mfMutex);
 }
 
 /* ===================================================================== */
@@ -194,11 +178,11 @@ type_ptr GetBacktracePointer()
   type_ptr result = (type_ptr)0xFFFFFFFF;
   if (p_backtrace != NULL) {
     void* buffer[BACKTRACE_BUFFER_SIZE];
-    AddCurrentThreadTo(arr_bUseUsualMallocFree);
+    LockThreadMf();
     // There is malloc in the backtrace function, it matters to use
     // usual malloc inside otherwise invocation is recursived
     p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
-    DeleteCurrentThreadIn(arr_bUseUsualMallocFree);
+    UnlockThreadMf();
     for (uint32_t i = 0U; i < BACKTRACE_BUFFER_SIZE; i++) {
       if (result > (type_ptr)buffer[i]) { 
         result = (type_ptr)buffer[i];
@@ -214,7 +198,7 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
   VOID * v = orgFuncptr( arg0 );
 
   if (shared_bInsideMain //this malloc is after main function
-    && !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my malloc
+    && !IsThreadMfLocked()) { //use my malloc
 
     PIN_MutexLock(&shared_mutex);
 
@@ -251,7 +235,7 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
   orgFuncptr( (size_t)arg0 );
 
   if (shared_bInsideMain && //this free is after main function
-    !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my free
+    !IsThreadMfLocked()) { //use my free
 
     PIN_MutexLock(&shared_mutex);
 
@@ -400,7 +384,8 @@ INT32 Help( VOID )
 
 VOID Ini( int argc, char* argv[] ) {
   LOG_INFO((char*)"\n*** MEMORY TRACE ***\n");
-  // Init pin mutex
+  // Init mutexes
+  PIN_MutexInit(&mfMutex);
   PIN_MutexInit(&shared_mutex);
   // Init a binary journal
   shared_bin_journal = new BinJournal(KnobOutputFile.Value().c_str());
@@ -410,9 +395,6 @@ VOID Ini( int argc, char* argv[] ) {
   p_backtrace = NULL;
   shared_last_time = 0;
   shared_bInsideMain = false;
-  for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
-    arr_bUseUsualMallocFree[i] = UNEXISTING_THREAD_NUMBER;
-  }
 }
 
 VOID Fini( VOID ) {
@@ -428,16 +410,14 @@ VOID Fini( VOID ) {
   shared_transmitter->FlushAll();
 
   //Just in case to prevent possible different errors
-  AddCurrentThreadTo(arr_bUseUsualMallocFree);
   delete shared_transmitter;
   delete shared_bin_journal;
-  DeleteCurrentThreadIn(arr_bUseUsualMallocFree);
-
   //To be sure the functions aren't invoked anymore
   shared_transmitter = NULL;
   shared_bin_journal = NULL;
 
   PIN_MutexUnlock(&shared_mutex);
+  PIN_MutexFini(&mfMutex);
   PIN_MutexFini(&shared_mutex);
 }
 
