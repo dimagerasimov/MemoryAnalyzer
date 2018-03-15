@@ -10,24 +10,19 @@
 /* Configs                                                               */
 /* ===================================================================== */
 
-//#define LOG_LVL_INFO
-//#define LOG_LVL_ERR
+//#define DEBUG_INFO
 
 /* ===================================================================== */
 /* Debug defines to logging control                                      */
 /* ===================================================================== */
 
-#ifdef LOG_LVL_INFO
+#ifdef DEBUG_INFO
 #define LOG_INFO(...) LogInfo(__VA_ARGS__)
-#else
-#define LOG_INFO(...)
-#endif /* LOG_LVL_INFO */
-
-#ifdef LOG_LVL_ERR
 #define LOG_ERR(...) LogError(__VA_ARGS__)
 #else
+#define LOG_INFO(...)
 #define LOG_ERR(...)
-#endif /* LOG_LVL_ERR */
+#endif /* DEBUG_INFO */
 
 /* ===================================================================== */
 /* Log functions                                                         */
@@ -38,7 +33,7 @@ void LogInfo(char msg[]) {
 }
 
 void LogError(char msg[]) {
-  cerr << msg << endl;
+  cerr << "ERROR: " << msg << endl;
 }
 
 /* ===================================================================== */
@@ -70,13 +65,13 @@ const uint32_t MAX_STR_LEN = 512U;
 
 const uint32_t MAX_QUEUE_SIZE = 32U;
 const uint32_t UNEXISTING_THREAD_NUMBER = 0U;
-OS_THREAD_ID arr_bUseUsualMallocFree[MAX_QUEUE_SIZE]; //the flag to use usual malloc and free in places where it's needed
+OS_THREAD_ID arr_bUseUsualMallocFree[MAX_QUEUE_SIZE]; //flags to use usual malloc and free
 
 // Shared data
-bool shared_bWasMainInvoked; //after main function in traced application it's true
-bool shared_bWasBacktraceTaken; //the flag indicates backtrace was taken or not
+bool shared_bMainDetected;
+bool shared_bBacktraceTaken;
 
-PIN_MUTEX shared_pin_mutex;
+PIN_MUTEX shared_mutex;
 type_long shared_last_time;
 struct timeval shared_start_time;
 Net* shared_transmitter;
@@ -185,119 +180,101 @@ void UpdateLastTimeInMilisec(type_long& out_last_time) {
 /* Replacement routines                                                  */
 /* ===================================================================== */
 
+const byte mallocTypes[4] = { TCODE_PTR, TCODE_SIZE_T, TCODE_PTR, TCODE_LONG };
+
+struct MallocData {
+  type_ptr returned_value;
+  type_size_t argument;
+  type_ptr backtrace_pointer;
+  type_long time;
+};
+
+type_ptr GetBacktracePointer()
+{
+  const uint32_t BACKTRACE_BUFFER_SIZE = 16U;
+  type_ptr result = (type_ptr)0xFFFFFFFF;
+  if (shared_bBacktraceTaken) {
+    void* buffer[BACKTRACE_BUFFER_SIZE];
+    AddCurrentThreadTo(arr_bUseUsualMallocFree);
+    // There is malloc in the backtrace function, it matters to use
+    // usual malloc inside otherwise invocation is recursived
+    p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
+    DeleteCurrentThreadIn(arr_bUseUsualMallocFree);
+    for (uint32_t i = 0U; i < BACKTRACE_BUFFER_SIZE; i++) {
+      if (result > (type_ptr)buffer[i]) { 
+        result = (type_ptr)buffer[i];
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
 {
-  // Call the relocated entry point of the original (replaced) routine.
-  //
   VOID * v = orgFuncptr( arg0 );
 
-
-  if (shared_bWasMainInvoked //this malloc is after main function
+  if (shared_bMainDetected //this malloc is after main function
     && !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my malloc
 
-    type_ptr copy_backtrace_pointer = (type_ptr)0xFFFFFFFF;
-    if (shared_bWasBacktraceTaken) {
-      const int BACKTRACE_BUFFER_SIZE = 16;
-      void* buffer[BACKTRACE_BUFFER_SIZE];
+    PIN_MutexLock(&shared_mutex);
 
-      AddCurrentThreadTo(arr_bUseUsualMallocFree);
-      // There is malloc in backtrace function, there is needed to use usual malloc else it will be recursive
-      p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
-      for (int i = 0; i < BACKTRACE_BUFFER_SIZE; i++) {
-        if (copy_backtrace_pointer > (type_ptr)buffer[i]) { 
-          copy_backtrace_pointer = (type_ptr)buffer[i];
-          break;
-        }
-      }
-      DeleteCurrentThreadIn(arr_bUseUsualMallocFree);
-    }
+    struct MallocData data;
+    data.returned_value = (type_ptr)v;
+    data.argument = (type_size_t)arg0;
+    data.backtrace_pointer = GetBacktracePointer();
+    UpdateLastTimeInMilisec(data.time);
 
-    PIN_MutexLock(&shared_pin_mutex);
+    Help :: hton((byte*)&data.returned_value, sizeof(data.returned_value));
+    Help :: hton((byte*)&data.argument, sizeof(data.argument));
+    Help :: hton((byte*)&data.backtrace_pointer, sizeof(data.backtrace_pointer));
+    Help :: hton((byte*)&data.time, sizeof(data.time));
 
-    type_long current_time;
-    UpdateLastTimeInMilisec(current_time);
-
-    const byte NUMBER_MALLOC_ARGUMENTS = 4;
-    const byte SIZE_MALLOC_DATA = sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr) + sizeof(type_long);
-
-    byte types[NUMBER_MALLOC_ARGUMENTS];  
-    types[0] = TCODE_PTR;
-    types[1] = TCODE_SIZE_T;
-    types[2] = TCODE_PTR;//ADDRINT equal type_ptr
-    types[3] = TCODE_LONG;
-
-    byte data[SIZE_MALLOC_DATA];
-    type_ptr copy_v = (type_ptr)v;
-    type_size_t copy_arg0 = (type_size_t)arg0;
-    // Backtrace pointer is saved above
-    type_long copy_current_time = (type_long)current_time;
-
-    Help :: hton((byte*)&copy_v, sizeof(type_ptr));
-    Help :: hton((byte*)&copy_arg0, sizeof(type_size_t));
-    Help :: hton((byte*)&copy_backtrace_pointer, sizeof(type_ptr));
-    Help :: hton((byte*)&copy_current_time, sizeof(type_long));
-
-    memcpy(&data[0], &copy_v, sizeof(type_ptr));
-    memcpy(&data[0 + sizeof(type_ptr)], &copy_arg0, sizeof(type_size_t));
-    memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_size_t)], &copy_backtrace_pointer, sizeof(type_ptr));
-    memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_size_t) + sizeof(type_ptr)],
-      &copy_current_time, sizeof(type_long));
-
-    BinfElement binfElement(FCODE_MALLOC, NUMBER_MALLOC_ARGUMENTS, types, SIZE_MALLOC_DATA, data);
+    BinfElement binfElement(FCODE_MALLOC, sizeof(mallocTypes), mallocTypes, sizeof(data), (byte*)&data);
     shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
-    shared_transmitter->SendBinf(binfElement, current_time);
+    shared_transmitter->SendBinf(binfElement, data.time);
 
-    PIN_MutexUnlock(&shared_pin_mutex);
+    PIN_MutexUnlock(&shared_mutex);
   }
   return v;
 }
 
+const byte freeTypes[3] = { TCODE_PTR, TCODE_PTR, TCODE_LONG };
+
+struct FreeData {
+  type_ptr argument;
+  type_ptr reserved;
+  type_long time;
+};
+
 VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
 {
-  // Call the relocated entry point of the original (replaced) routine.
-  //
   orgFuncptr( (size_t)arg0 );
 
-  if (shared_bWasMainInvoked && //this free is after main function
+  if (shared_bMainDetected && //this free is after main function
     !FindCurrentThreadIn(arr_bUseUsualMallocFree)) { //use my free
 
-    PIN_MutexLock(&shared_pin_mutex);
+    PIN_MutexLock(&shared_mutex);
 
-    // Current time
-    type_long current_time;
-    UpdateLastTimeInMilisec(current_time);
+    struct FreeData data;
+    data.argument = (type_ptr)arg0;
+    data.reserved = (type_ptr)arg0;
+    UpdateLastTimeInMilisec(data.time);
 
-    const byte NUMBER_FREE_ARGUMENTS = 3;
-    const byte SIZE_FREE_DATA = sizeof(type_ptr) + sizeof(type_ptr) + sizeof(type_long);
+    Help :: hton((byte*)&data.argument, sizeof(data.argument));
+    Help :: hton((byte*)&data.reserved, sizeof(data.reserved));
+    Help :: hton((byte*)&data.time, sizeof(data.time));
 
-    byte types[NUMBER_FREE_ARGUMENTS];
-    types[0] = TCODE_PTR;
-    types[1] = TCODE_PTR;//ADDRINT equal type_ptr
-    types[2] = TCODE_LONG;
-
-    byte data[SIZE_FREE_DATA];
-    type_ptr copy_arg0 = (type_ptr)arg0;
-    type_ptr copy_reserve_byte = (type_ptr)arg0;
-    type_long copy_current_time = (type_long)current_time;
-
-    Help :: hton((byte*)&copy_arg0, sizeof(type_ptr));
-    Help :: hton((byte*)&copy_reserve_byte, sizeof(type_ptr));
-    Help :: hton((byte*)&copy_current_time, sizeof(type_long));
-
-    memcpy(&data[0], &copy_arg0, sizeof(type_ptr));
-    memcpy(&data[0 + sizeof(type_ptr)], &copy_reserve_byte, sizeof(type_ptr));
-    memcpy(&data[0 + sizeof(type_ptr) + sizeof(type_ptr)], &copy_current_time, sizeof(type_long));
-
-    BinfElement binfElement(FCODE_FREE, NUMBER_FREE_ARGUMENTS, types, SIZE_FREE_DATA, data);
+    BinfElement binfElement(FCODE_FREE, sizeof(freeTypes), freeTypes, sizeof(data), (byte*)&data);
     shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
-    shared_transmitter->SendBinf(binfElement, current_time);
+    shared_transmitter->SendBinf(binfElement, data.time);
 
-    PIN_MutexUnlock(&shared_pin_mutex);
+    PIN_MutexUnlock(&shared_mutex);
   }
 }
 
 VOID NewMain( TYPE_FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
-  shared_bWasMainInvoked = true;
+  shared_bMainDetected = true;
   orgFuncptr( arg0, (char**)arg1 );
 }
 
@@ -322,8 +299,7 @@ bool ReplaceFunction(IMG* img, char* funcName) {
   if ( bResult )
   {
     char message[MAX_STR_LEN];
-    sprintf(message, "\nFound \"%s\" function in module \"%s\"",
-      funcName, imgName);
+    sprintf(message, "\nFound \"%s\" function in \"%s\"", funcName, imgName);
     LOG_INFO(message);
 
     bResult = RTN_Valid(rtn);
@@ -375,8 +351,7 @@ bool ReplaceFunction(IMG* img, char* funcName) {
         p_backtrace = (int (*)( void**, int ))addr;
       }
     }
-    sprintf(message, "\tWas it replaced? %s\n",
-      bResult == true ? "YES" : "NO");
+    sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
     LOG_INFO(message);
   }
   return bResult;
@@ -386,12 +361,12 @@ VOID ImageLoad( IMG img, VOID *v )
 {
   char* imgName = (char*)IMG_Name(img).c_str();
 
-  if (!shared_bWasMainInvoked)
+  if (!shared_bMainDetected)
   {// Replace the "main" function with my function only once
     ReplaceFunction(&img, (char*)MAIN);
   }
   // Look for stdlib library
-  bool bStdlib = ( string(imgName).find(STDLIB) < MAX_STR_LEN );
+  const bool bStdlib = ( string(imgName).find(STDLIB) < MAX_STR_LEN );
   if (bStdlib)
   {
     // Replace the "malloc" function with my function
@@ -402,12 +377,12 @@ VOID ImageLoad( IMG img, VOID *v )
     ReplaceFunction(&img, (char*)EXIT);
     // Replace the "backtrace" function with my function
     ReplaceFunction(&img, (char*)BACKTRACE);
-    shared_bWasBacktraceTaken = (p_backtrace != NULL);
+    shared_bBacktraceTaken = (p_backtrace != NULL);
   }
   else
   {
     char message[MAX_STR_LEN];
-    sprintf(message, "<--- Module \"%s\" ignored... --->", imgName);
+    sprintf(message, "<--- \"%s\" ignored... --->", imgName);
     LOG_INFO(message);
   }
 }
@@ -427,15 +402,15 @@ INT32 Help( VOID )
 VOID Ini( int argc, char* argv[] ) {
   LOG_INFO((char*)"\n*** MEMORY TRACE ***\n");
   // Init pin mutex
-  PIN_MutexInit(&shared_pin_mutex);
+  PIN_MutexInit(&shared_mutex);
   // Init a binary journal
   shared_bin_journal = new BinJournal(KnobOutputFile.Value().c_str());
   shared_transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
   gettimeofday(&shared_start_time, NULL);
   // Init variables
   shared_last_time = 0;
-  shared_bWasMainInvoked = false;
-  shared_bWasBacktraceTaken = false;
+  shared_bMainDetected = false;
+  shared_bBacktraceTaken = false;
   for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
     arr_bUseUsualMallocFree[i] = UNEXISTING_THREAD_NUMBER;
   }
@@ -446,12 +421,10 @@ VOID Fini( VOID ) {
     return;
   }
 
-  PIN_MutexLock(&shared_pin_mutex);
+  PIN_MutexLock(&shared_mutex);
 
-  bool pushOk = shared_bin_journal->Push();
-  if (!pushOk) {
-    LOG_ERR((char*)
-    "Error: The binary journal hasn't been recorded. Try again.");
+  if (!shared_bin_journal->Push()) {
+    LOG_ERR((char*)"The journal hasn't been written correctly.");
   }
   shared_transmitter->FlushAll();
 
@@ -465,30 +438,18 @@ VOID Fini( VOID ) {
   shared_transmitter = NULL;
   shared_bin_journal = NULL;
 
-  PIN_MutexUnlock(&shared_pin_mutex);
-  PIN_MutexFini(&shared_pin_mutex);
+  PIN_MutexUnlock(&shared_mutex);
+  PIN_MutexFini(&shared_mutex);
 }
 
 int main( INT32 argc, CHAR *argv[] )
 {
-  // Initialize symbol processing
-  //
   PIN_InitSymbols();
-
-  // Initialize pin
-  //
   if (PIN_Init(argc, argv))
     { return Help(); }
 
-  // Register ImageLoad to be called when an image is loaded
-  //
   IMG_AddInstrumentFunction( ImageLoad, 0 );
-
-  //Init function
   Ini(argc, argv);
-  
-  // Start the program in probe mode, never returns
-  //
   PIN_StartProgramProbed();
 
   return 0;
