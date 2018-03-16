@@ -43,8 +43,9 @@ void LogError(char msg[]) {
 
 const char* STDLIB    = LIBC_SO;
 
-const char* MAIN      = "main";
-typedef ADDRINT ( *TYPE_FP_MAIN)( int, char** );
+const char* __LIBC_START_MAIN = "__libc_start_main";
+typedef int ( *TYPE_FP_LIBC_START_MAIN)( int (*main) (int, char **, char **), int argc, char **argv,
+        __typeof (main) init, void (*fini) (void), void (*rtld_fini) (void), void *stack_end );
 
 const char* EXIT      = "exit";
 typedef VOID ( *TYPE_FP_EXIT )( int );
@@ -172,10 +173,11 @@ struct MallocData {
   type_long time;
 };
 
-type_ptr GetBacktracePointer()
+bool GetBacktracePointer(type_ptr& bactrace_pointer)
 {
-  const uint32_t BACKTRACE_BUFFER_SIZE = 16U;
-  type_ptr result = (type_ptr)0xFFFFFFFF;
+  const uint32_t BACKTRACE_BUFFER_SIZE = 32U;
+  const uint64_t THRESHOLD = 0xFFFFFFFFU;
+  bool bResult = false;
   if (p_backtrace != NULL) {
     void* buffer[BACKTRACE_BUFFER_SIZE];
     LockThreadMf();
@@ -184,13 +186,14 @@ type_ptr GetBacktracePointer()
     p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
     UnlockThreadMf();
     for (uint32_t i = 0U; i < BACKTRACE_BUFFER_SIZE; i++) {
-      if (result > (type_ptr)buffer[i]) { 
-        result = (type_ptr)buffer[i];
+      if ((uint64_t)THRESHOLD > (uint64_t)buffer[i]) { 
+        bactrace_pointer = (type_ptr)buffer[i];
+        bResult = true;
         break;
       }
     }
   }
-  return result;
+  return bResult;
 }
 
 VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
@@ -205,18 +208,19 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
     struct MallocData data;
     data.returned_value = (type_ptr)v;
     data.argument = (type_size_t)arg0;
-    data.backtrace_pointer = GetBacktracePointer();
     UpdateLastTimeInMilisec(data.time);
+    const bool bValidPointer = GetBacktracePointer(data.backtrace_pointer);
 
-    Help :: hton((byte*)&data.returned_value, sizeof(data.returned_value));
-    Help :: hton((byte*)&data.argument, sizeof(data.argument));
-    Help :: hton((byte*)&data.backtrace_pointer, sizeof(data.backtrace_pointer));
-    Help :: hton((byte*)&data.time, sizeof(data.time));
+    if (bValidPointer) {
+      Help :: hton((byte*)&data.returned_value, sizeof(data.returned_value));
+      Help :: hton((byte*)&data.argument, sizeof(data.argument));
+      Help :: hton((byte*)&data.backtrace_pointer, sizeof(data.backtrace_pointer));
+      Help :: hton((byte*)&data.time, sizeof(data.time));
 
-    BinfElement binfElement(FCODE_MALLOC, sizeof(mallocTypes), mallocTypes, sizeof(data), (byte*)&data);
-    shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
-    shared_transmitter->SendBinf(binfElement, data.time);
-
+      BinfElement binfElement(FCODE_MALLOC, sizeof(mallocTypes), mallocTypes, sizeof(data), (byte*)&data);
+      shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
+      shared_transmitter->SendBinf(binfElement, data.time);
+    }
     PIN_MutexUnlock(&shared_mutex);
   }
   return v;
@@ -243,22 +247,27 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
     data.argument = (type_ptr)arg0;
     data.reserved = (type_ptr)arg0;
     UpdateLastTimeInMilisec(data.time);
+    type_ptr mockup;
+    const bool bValidPointer = GetBacktracePointer(mockup);
 
-    Help :: hton((byte*)&data.argument, sizeof(data.argument));
-    Help :: hton((byte*)&data.reserved, sizeof(data.reserved));
-    Help :: hton((byte*)&data.time, sizeof(data.time));
+    if (bValidPointer) {
+      Help :: hton((byte*)&data.argument, sizeof(data.argument));
+      Help :: hton((byte*)&data.reserved, sizeof(data.reserved));
+      Help :: hton((byte*)&data.time, sizeof(data.time));
 
-    BinfElement binfElement(FCODE_FREE, sizeof(freeTypes), freeTypes, sizeof(data), (byte*)&data);
-    shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
-    shared_transmitter->SendBinf(binfElement, data.time);
-
+      BinfElement binfElement(FCODE_FREE, sizeof(freeTypes), freeTypes, sizeof(data), (byte*)&data);
+      shared_bin_journal->AddBinf(binfElement, MFREE_SECTION);
+      shared_transmitter->SendBinf(binfElement, data.time);
+    }
     PIN_MutexUnlock(&shared_mutex);
   }
 }
 
-VOID NewMain( TYPE_FP_MAIN orgFuncptr, ADDRINT arg0, VOID* arg1) {
+VOID NewLibcStartMain( TYPE_FP_LIBC_START_MAIN orgFuncptr,
+  int (*main) (int, char **, char **), int argc, char **argv,
+        __typeof (main) init, void (*fini) (void), void (*rtld_fini) (void), void *stack_end ) {
   shared_bInsideMain = true;
-  orgFuncptr( arg0, (char**)arg1 );
+  orgFuncptr( main, argc, argv, init, fini, rtld_fini, stack_end);
 }
 
 // Fini declaration
@@ -289,16 +298,22 @@ bool ReplaceFunction(IMG* img, char* funcName) {
     bResult = RTN_Valid(rtn);
     if (bResult)
     {
-      if (strcmp(funcName, MAIN) == 0) {
-        PROTO proto_main = PROTO_Allocate( PIN_PARG(int), CALLINGSTD_DEFAULT,
-          funcName, PIN_PARG(int), PIN_PARG(char**), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewMain),
-          IARG_PROTOTYPE, proto_main,
+      if (strcmp(funcName, __LIBC_START_MAIN) == 0) {
+        PROTO proto_libc_start_main = PROTO_Allocate( PIN_PARG(int), CALLINGSTD_DEFAULT,
+          funcName, PIN_PARG(void*), PIN_PARG(int), PIN_PARG(char**),
+          PIN_PARG(int), PIN_PARG(void*), PIN_PARG(void*), PIN_PARG(void*), PIN_PARG_END() );
+        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewLibcStartMain),
+          IARG_PROTOTYPE, proto_libc_start_main,
           IARG_ORIG_FUNCPTR,
           IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
           IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
           IARG_END);
-        PROTO_Free( proto_main );
+        PROTO_Free( proto_libc_start_main );
       }
       else if (strcmp(funcName, MALLOC) == 0) {
         PROTO proto_malloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
@@ -345,14 +360,12 @@ VOID ImageLoad( IMG img, VOID *v )
 {
   char* imgName = (char*)IMG_Name(img).c_str();
 
-  if (!shared_bInsideMain)
-  {// Replace the "main" function with my function only once
-    ReplaceFunction(&img, (char*)MAIN);
-  }
   // Look for stdlib library
   const bool bStdlib = ( string(imgName).find(STDLIB) < MAX_STR_LEN );
   if (bStdlib)
   {
+    // Replace the "__libc_start_main" function with my function
+    ReplaceFunction(&img, (char*)__LIBC_START_MAIN);
     // Replace the "malloc" function with my function
     ReplaceFunction(&img, (char*)MALLOC);
     // Replace the "free" function with my function
