@@ -142,9 +142,10 @@ public class GdbForm extends javax.swing.JFrame {
 
         jErrorListTitle = new javax.swing.JLabel();
         jSourceCodeLabel = new javax.swing.JLabel();
-        jTextArea = new javax.swing.JTextArea();
         jScrollErrorListPane = new javax.swing.JScrollPane();
         jErrorList = new javax.swing.JList<>();
+        jScrollTextAreaPane = new javax.swing.JScrollPane();
+        jTextArea = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Results from GDB");
@@ -160,6 +161,17 @@ public class GdbForm extends javax.swing.JFrame {
 
         jSourceCodeLabel.setFont(new java.awt.Font("Ubuntu", 0, 17)); // NOI18N
         jSourceCodeLabel.setText("Source code:");
+
+        jErrorList.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        jErrorList.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
+        jErrorList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        jErrorList.setVisibleRowCount(4);
+        jErrorList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                jErrorListValueChanged(evt);
+            }
+        });
+        jScrollErrorListPane.setViewportView(jErrorList);
 
         jTextArea.setEditable(false);
         jTextArea.setColumns(20);
@@ -185,32 +197,22 @@ public class GdbForm extends javax.swing.JFrame {
                 jTextAreaKeyReleased(evt);
             }
         });
-
-        jErrorList.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
-        jErrorList.setFont(new java.awt.Font("Ubuntu", 0, 16)); // NOI18N
-        jErrorList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        jErrorList.setVisibleRowCount(4);
-        jErrorList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
-            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
-                jErrorListValueChanged(evt);
-            }
-        });
-        jScrollErrorListPane.setViewportView(jErrorList);
+        jScrollTextAreaPane.setViewportView(jTextArea);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+            .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jScrollErrorListPane)
-                    .addComponent(jTextArea, javax.swing.GroupLayout.DEFAULT_SIZE, 648, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollErrorListPane, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 648, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jSourceCodeLabel)
                             .addComponent(jErrorListTitle))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(jScrollTextAreaPane))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -219,7 +221,7 @@ public class GdbForm extends javax.swing.JFrame {
                 .addGap(6, 6, 6)
                 .addComponent(jSourceCodeLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTextArea, javax.swing.GroupLayout.DEFAULT_SIZE, 226, Short.MAX_VALUE)
+                .addComponent(jScrollTextAreaPane, javax.swing.GroupLayout.DEFAULT_SIZE, 226, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jErrorListTitle)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -301,6 +303,7 @@ public class GdbForm extends javax.swing.JFrame {
     private javax.swing.JList<String> jErrorList;
     private javax.swing.JLabel jErrorListTitle;
     private javax.swing.JScrollPane jScrollErrorListPane;
+    private javax.swing.JScrollPane jScrollTextAreaPane;
     private javax.swing.JLabel jSourceCodeLabel;
     private javax.swing.JTextArea jTextArea;
     // End of variables declaration//GEN-END:variables
