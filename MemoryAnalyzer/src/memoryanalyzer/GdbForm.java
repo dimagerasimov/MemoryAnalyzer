@@ -285,8 +285,12 @@ public class GdbForm extends javax.swing.JFrame {
     }//GEN-LAST:event_jTextAreaMousePressed
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        feedback.setEnabled(true);
-        gdbResultReceiver.stop();
+        if (feedback != null) {
+          feedback.setEnabled(true);
+        }
+        if (gdbResultReceiver != null) {
+          gdbResultReceiver.stop();
+        }
     }//GEN-LAST:event_formWindowClosed
 
     private void jTextAreaKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextAreaKeyReleased
