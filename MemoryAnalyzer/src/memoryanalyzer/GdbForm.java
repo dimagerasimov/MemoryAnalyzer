@@ -105,23 +105,14 @@ public class GdbForm extends javax.swing.JFrame {
 
     private ErrorListEntry[] MakeErrorListEntries(HashMap<Long, Long> gdbResults) {
         Set<Long> setOfKeys = gdbResults.keySet();
-        TreeMap<Long, Long> sortTree = new TreeMap();
-        long tmpSizeOfMemory;
-        for(Long tmpGdbAddress : setOfKeys) {
-            tmpSizeOfMemory = gdbResults.get(tmpGdbAddress);
-            sortTree.put(tmpSizeOfMemory, tmpGdbAddress);
-        }
-
-        ErrorListEntry[] entries = new ErrorListEntry[sortTree.size()];
+        ErrorListEntry[] entries = new ErrorListEntry[gdbResults.size()];
         DefaultListModel model = new DefaultListModel();
-        for(int i = sortTree.size() - 1; i >= 0; i--) {
-            //Get an entry with a minimal size of memory
-            tmpSizeOfMemory = sortTree.firstKey();
-            entries[i] = new ErrorListEntry(tmpSizeOfMemory, sortTree.get(tmpSizeOfMemory));
-            sortTree.remove(tmpSizeOfMemory);
+        int count = 0;
+        for (Long tmpGdbAddress : setOfKeys) {
+            entries[count++] = new ErrorListEntry(gdbResults.get(tmpGdbAddress), tmpGdbAddress);
         }
         String titleOfEntry;
-        for(int i = 0; i < entries.length; i++) {
+        for (int i = 0; i < entries.length; i++) {
             titleOfEntry = gdbResultReceiver.GetTitleOfEntry(entries[i].GetGdbAddress());
             if(titleOfEntry.isEmpty()) {
                 titleOfEntry = "addr. 0x" + Long.toHexString(entries[i].gdbAddress);
