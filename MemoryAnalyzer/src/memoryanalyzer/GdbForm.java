@@ -41,9 +41,12 @@ public class GdbForm extends javax.swing.JFrame {
 
     public GdbForm(MainForm linkToMainForm, GdbThreadFeedback gdbThreadFeedback,
             ConnectGdbStruct connectGdbInfo, HashMap<Long, Long> gdbResults) {
+        feedback = linkToMainForm;
+        feedback.setEnabled(false);
+
         initComponents();
         setCenterLocation();
-
+        
         GdbResultReceiver mokeUpGdbResultReceiver = null;
         try {
             mokeUpGdbResultReceiver  = new GdbResultReceiver(connectGdbInfo);
@@ -68,8 +71,6 @@ public class GdbForm extends javax.swing.JFrame {
         errorListEntries = MakeErrorListEntries(gdbResults);
         beginningSelectedIndex = 0;
         endSelectedIndex = 0;
-        feedback = linkToMainForm;
-        feedback.setEnabled(false);
         if(gdbThreadFeedback.GetState() == GdbThreadFeedback.NOT_DEFINED) {
             gdbThreadFeedback.SetState(GdbThreadFeedback.STARTED_SUCCESSFULLY);
         }
