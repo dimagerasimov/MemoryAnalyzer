@@ -41,8 +41,6 @@ void LogError(char msg[]) {
 /* Declarations regarding to replaced functions and libraries            */
 /* ===================================================================== */
 
-const char* STDLIB    = LIBC_SO;
-
 const char* __LIBC_START_MAIN = "__libc_start_main";
 typedef int ( *TYPE_FP_LIBC_START_MAIN)( int (*main) (int, char **, char **), int argc, char **argv,
         __typeof (main) init, void (*fini) (void), void (*rtld_fini) (void), void *stack_end );
@@ -56,8 +54,14 @@ typedef VOID * ( *TYPE_FP_MALLOC )( size_t );
 const char* FREE      = "free";
 typedef VOID ( *TYPE_FP_FREE )( size_t );
 
+const char* OPERATOR_NEW1    = "_Znwm";
+void* p_operator_new1; //just a pointer to the operator new1
+
+const char* OPERATOR_NEW2    = "_Znam";
+void* p_operator_new2; //just a pointer to the operator new2
+
 const char* BACKTRACE = "backtrace";
-int (*p_backtrace) ( void**, int ); //just a pointer to backtrace
+int (*p_backtrace) ( void**, int ); //just a pointer to the backtrace
 
 /* ===================================================================== */
 /* Global variables                                                      */
@@ -65,7 +69,7 @@ int (*p_backtrace) ( void**, int ); //just a pointer to backtrace
 
 const uint32_t MAX_STR_LEN = 512U;
 
-PIN_MUTEX mfMutex;
+PIN_MUTEX threadLockMutex;
 map<OS_THREAD_ID, bool> mfQueue;
 
 // Shared data
@@ -76,6 +80,7 @@ type_long shared_last_time;
 struct timeval shared_start_time;
 Net* shared_transmitter;
 BinJournal* shared_bin_journal;
+map<void*, bool> shared_memory_map;
 
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
   "o", "memory_trace_net.out", "specify trace file name");
@@ -117,29 +122,29 @@ int ParseToPort(int argc, char* argv[]) {
 /* Functions regarding to QUEUE with thread flags                        */
 /* ===================================================================== */
 
-bool IsThreadMfLocked() {
-  PIN_MutexLock(&mfMutex);
-  const bool bResult = (mfQueue.find(PIN_GetTid()) != mfQueue.end());
-  PIN_MutexUnlock(&mfMutex);
+bool IsThreadLocked(const map<OS_THREAD_ID, bool>& threadList) {
+  PIN_MutexLock(&threadLockMutex);
+  const bool bResult = (threadList.find(PIN_GetTid()) != threadList.end());
+  PIN_MutexUnlock(&threadLockMutex);
   return bResult;
 }
 
-void LockThreadMf() {
-  if (IsThreadMfLocked()) {
+void LockThread(map<OS_THREAD_ID, bool>& threadList) {
+  if (IsThreadLocked(threadList)) {
     PIN_ExitProcess(1234);
   }
-  PIN_MutexLock(&mfMutex);
-  mfQueue[PIN_GetTid()] = true;
-  PIN_MutexUnlock(&mfMutex);
+  PIN_MutexLock(&threadLockMutex);
+  threadList[PIN_GetTid()] = true;
+  PIN_MutexUnlock(&threadLockMutex);
 }
 
-void UnlockThreadMf() {
-  if (!IsThreadMfLocked()) {
+void UnlockThread(map<OS_THREAD_ID, bool>& threadList) {
+  if (!IsThreadLocked(threadList)) {
     PIN_ExitProcess(1234);
   }
-  PIN_MutexLock(&mfMutex);
-  mfQueue.erase(mfQueue.find(PIN_GetTid()));
-  PIN_MutexUnlock(&mfMutex);
+  PIN_MutexLock(&threadLockMutex);
+  threadList.erase(threadList.find(PIN_GetTid()));
+  PIN_MutexUnlock(&threadLockMutex);
 }
 
 /* ===================================================================== */
@@ -173,23 +178,50 @@ struct MallocData {
   type_long time;
 };
 
-bool GetBacktracePointer(type_ptr& bactrace_pointer)
+enum EFunctionId {
+  MALLOC_ID,
+  FREE_ID,
+};
+
+bool IsLibraryAddress(const void* pAddress)
 {
-  const uint32_t BACKTRACE_BUFFER_SIZE = 32U;
   const uint64_t THRESHOLD = 0xFFFFFFFFU;
+  return ((uint64_t)pAddress > THRESHOLD);
+}
+
+bool IsThisFunction(const void* pFunction, const void* pAddress)
+{
+  const uint64_t MAX_FUNCTION_OFFSET = 0x2F;
+  return ((uint64_t)pAddress - (uint64_t)pFunction < MAX_FUNCTION_OFFSET);
+}
+
+bool GetBacktracePointer(const EFunctionId eFuncId, type_ptr& bactrace_pointer)
+{
+  const uint32_t MAXIMAL_BUFFER_SIZE = 6U;
+  uint32_t NEEDED_INDEX = 3U;
   bool bResult = false;
   if (p_backtrace != NULL) {
-    void* buffer[BACKTRACE_BUFFER_SIZE];
-    LockThreadMf();
+    void* buffer[MAXIMAL_BUFFER_SIZE];
+    LockThread(mfQueue);
     // There is malloc in the backtrace function, it matters to use
     // usual malloc inside otherwise invocation is recursived
-    p_backtrace(buffer, BACKTRACE_BUFFER_SIZE);
-    UnlockThreadMf();
-    for (uint32_t i = 0U; i < BACKTRACE_BUFFER_SIZE; i++) {
-      if ((uint64_t)THRESHOLD > (uint64_t)buffer[i]) { 
-        bactrace_pointer = (type_ptr)buffer[i];
-        bResult = true;
-        break;
+    p_backtrace(buffer, MAXIMAL_BUFFER_SIZE);
+    UnlockThread(mfQueue);
+    if (!IsLibraryAddress(buffer[NEEDED_INDEX])) { 
+      bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX];
+      bResult = true;
+    }
+    if (!bResult && eFuncId == MALLOC_ID) {
+      if (IsThisFunction(p_operator_new1, buffer[NEEDED_INDEX])) {
+        if (!IsLibraryAddress(buffer[NEEDED_INDEX + 1U])) {
+          bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX + 1U];
+          bResult = true;
+        }
+        if (IsThisFunction(p_operator_new2, buffer[NEEDED_INDEX + 1U])
+            && !IsLibraryAddress(buffer[NEEDED_INDEX + 2U])) {
+          bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX + 2U];
+          bResult = true;
+        }
       }
     }
   }
@@ -201,7 +233,7 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
   VOID * v = orgFuncptr( arg0 );
 
   if (shared_bInsideMain //this malloc is after main function
-    && !IsThreadMfLocked()) { //use my malloc
+    && !IsThreadLocked(mfQueue)) { //use my malloc
 
     PIN_MutexLock(&shared_mutex);
 
@@ -209,9 +241,11 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
     data.returned_value = (type_ptr)v;
     data.argument = (type_size_t)arg0;
     UpdateLastTimeInMilisec(data.time);
-    const bool bValidPointer = GetBacktracePointer(data.backtrace_pointer);
+    const bool bValidPointer = GetBacktracePointer(MALLOC_ID, data.backtrace_pointer);
 
     if (bValidPointer) {
+      shared_memory_map[(void*)data.returned_value] = true;
+
       Help :: hton((byte*)&data.returned_value, sizeof(data.returned_value));
       Help :: hton((byte*)&data.argument, sizeof(data.argument));
       Help :: hton((byte*)&data.backtrace_pointer, sizeof(data.backtrace_pointer));
@@ -239,7 +273,7 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
   orgFuncptr( (size_t)arg0 );
 
   if (shared_bInsideMain && //this free is after main function
-    !IsThreadMfLocked()) { //use my free
+    !IsThreadLocked(mfQueue)) { //use my free
 
     PIN_MutexLock(&shared_mutex);
 
@@ -248,8 +282,11 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
     data.reserved = (type_ptr)arg0;
     UpdateLastTimeInMilisec(data.time);
     type_ptr mockup;
-    const bool bValidPointer = GetBacktracePointer(mockup);
+    bool bValidPointer = GetBacktracePointer(FREE_ID, mockup);
 
+    if (bValidPointer) {
+      bValidPointer = (shared_memory_map.erase((void*)data.argument) != 0U);
+    }
     if (bValidPointer) {
       Help :: hton((byte*)&data.argument, sizeof(data.argument));
       Help :: hton((byte*)&data.reserved, sizeof(data.reserved));
@@ -283,7 +320,7 @@ VOID NewExit( TYPE_FP_EXIT orgFuncptr, ADDRINT arg0) {
 /* Instrumentation routines                                              */
 /* ===================================================================== */
 
-bool ReplaceFunction(IMG* img, char* funcName) {
+bool HandleFunction(IMG* img, char* funcName) {
   bool bResult = true;
   char* imgName = (char*)IMG_Name(*img).c_str();
   RTN rtn = RTN_FindByName( *img, funcName );
@@ -345,6 +382,14 @@ bool ReplaceFunction(IMG* img, char* funcName) {
           IARG_END);
         PROTO_Free( proto_exit );
       }
+      else if (strcmp(funcName, OPERATOR_NEW1) == 0) {
+        ADDRINT addr = RTN_Address(rtn);
+        p_operator_new1 = (void*)addr;
+      }
+      else if (strcmp(funcName, OPERATOR_NEW2) == 0) {
+        ADDRINT addr = RTN_Address(rtn);
+        p_operator_new2 = (void*)addr;
+      }
       else if (strcmp(funcName, BACKTRACE) == 0) {
         ADDRINT addr = RTN_Address(rtn);
         p_backtrace = (int (*)( void**, int ))addr;
@@ -360,20 +405,29 @@ VOID ImageLoad( IMG img, VOID *v )
 {
   char* imgName = (char*)IMG_Name(img).c_str();
 
-  // Look for stdlib library
-  const bool bStdlib = ( string(imgName).find(STDLIB) < MAX_STR_LEN );
-  if (bStdlib)
+  // Looking for the stdc
+  const bool bStdc = ( string(imgName).find((char*)"libstdc++.so") < MAX_STR_LEN );
+  if (bStdc)
   {
-    // Replace the "__libc_start_main" function with my function
-    ReplaceFunction(&img, (char*)__LIBC_START_MAIN);
-    // Replace the "malloc" function with my function
-    ReplaceFunction(&img, (char*)MALLOC);
-    // Replace the "free" function with my function
-    ReplaceFunction(&img, (char*)FREE);
-    // Replace the "exit" function with my function
-    ReplaceFunction(&img, (char*)EXIT);
-    // Replace the "backtrace" function with my function
-    ReplaceFunction(&img, (char*)BACKTRACE);
+    // Replace "operator new" with my function
+    HandleFunction(&img, (char*)OPERATOR_NEW1);
+    // Replace "operator new" with my function
+    HandleFunction(&img, (char*)OPERATOR_NEW2);
+  }
+  // Looking for the libc
+  const bool bLibc = ( string(imgName).find(LIBC_SO) < MAX_STR_LEN );
+  if (bLibc)
+  {
+    // Replace "__libc_start_main" with my function
+    HandleFunction(&img, (char*)__LIBC_START_MAIN);
+    // Replace "malloc" with my function
+    HandleFunction(&img, (char*)MALLOC);
+    // Replace "free" with my function
+    HandleFunction(&img, (char*)FREE);
+    // Replace "exit" with my function
+    HandleFunction(&img, (char*)EXIT);
+    // Replace "backtrace" with my function
+    HandleFunction(&img, (char*)BACKTRACE);
   }
   else
   {
@@ -398,7 +452,7 @@ INT32 Help( VOID )
 VOID Ini( int argc, char* argv[] ) {
   LOG_INFO((char*)"\n*** MEMORY TRACE ***\n");
   // Init mutexes
-  PIN_MutexInit(&mfMutex);
+  PIN_MutexInit(&threadLockMutex);
   PIN_MutexInit(&shared_mutex);
   // Init a binary journal
   shared_bin_journal = new BinJournal(KnobOutputFile.Value().c_str());
@@ -430,7 +484,7 @@ VOID Fini( VOID ) {
   shared_bin_journal = NULL;
 
   PIN_MutexUnlock(&shared_mutex);
-  PIN_MutexFini(&mfMutex);
+  PIN_MutexFini(&threadLockMutex);
   PIN_MutexFini(&shared_mutex);
 }
 
