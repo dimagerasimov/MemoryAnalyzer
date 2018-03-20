@@ -44,7 +44,7 @@ public class GdbThread extends Thread {
     @Override
     public void run() {
         GdbThreadFeedback gdbThreadFeedback = new GdbThreadFeedback();
-        GdbForm gdbForm = new GdbForm(feedback, gdbThreadFeedback, connectInfo, gdbThreadInfo);
+        GdbForm gdbForm = new GdbForm(gdbThreadFeedback, connectInfo, gdbThreadInfo);
         try {
             while(gdbThreadFeedback.state == GdbThreadFeedback.NOT_DEFINED) {
                 Thread.sleep(1000);

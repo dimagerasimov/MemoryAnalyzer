@@ -9,7 +9,6 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 import java.util.Set;
 import java.util.HashMap;
-import java.util.TreeMap;
 import java.io.IOException;
 import javax.swing.DefaultListModel;
 import analyzer.GdbThread.GdbThreadFeedback;
@@ -39,11 +38,8 @@ public class GdbForm extends javax.swing.JFrame {
         }
     }
 
-    public GdbForm(MainForm linkToMainForm, GdbThreadFeedback gdbThreadFeedback,
+    public GdbForm(GdbThreadFeedback gdbThreadFeedback,
             ConnectGdbStruct connectGdbInfo, HashMap<Long, Long> gdbResults) {
-        feedback = linkToMainForm;
-        feedback.setEnabled(false);
-
         initComponents();
         setCenterLocation();
         
@@ -277,9 +273,6 @@ public class GdbForm extends javax.swing.JFrame {
     }//GEN-LAST:event_jTextAreaMousePressed
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        if (feedback != null) {
-          feedback.setEnabled(true);
-        }
         if (gdbResultReceiver != null) {
           gdbResultReceiver.stop();
         }
@@ -293,8 +286,7 @@ public class GdbForm extends javax.swing.JFrame {
     private int endSelectedIndex;
     private final ErrorListEntry[] errorListEntries;
     private final GdbResultReceiver gdbResultReceiver;
-    private final MainForm feedback;
-
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JList<String> jErrorList;
     private javax.swing.JLabel jErrorListTitle;
