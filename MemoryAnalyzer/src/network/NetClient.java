@@ -21,7 +21,7 @@ public class NetClient {
         do {
             serverSocket = getValidServerSocket();
         } while(serverSocket == null);
-        serverSocket.setSoTimeout(Protocol.TRANSLATION_TIMEOUT * 1000);
+        serverSocket.setSoTimeout(Protocol.CONNECTION_TIMEOUT * 1000);
     }
     
     public void dispose() {

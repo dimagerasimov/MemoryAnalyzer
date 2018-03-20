@@ -11,8 +11,7 @@ package network;
  */
 public class Protocol {    
     // Constant define a timeouts
-    public static final int CONNECTION_TIMEOUT = 10;
-    public static final int TRANSLATION_TIMEOUT = 30;
+    public static final int CONNECTION_TIMEOUT = 120;
   
     // Symbol delimiters of protocol
     public final static String COM_DELIMITER = "`";
