@@ -51,6 +51,12 @@ typedef VOID ( *TYPE_FP_EXIT )( int );
 const char* MALLOC    = "malloc";
 typedef VOID * ( *TYPE_FP_MALLOC )( size_t );
 
+const char* CALLOC    = "calloc";
+typedef VOID * ( *TYPE_FP_CALLOC )( size_t, size_t );
+
+const char* REALLOC    = "realloc";
+typedef VOID * ( *TYPE_FP_REALLOC )( void*, size_t );
+
 const char* FREE      = "free";
 typedef VOID ( *TYPE_FP_FREE )( size_t );
 
@@ -62,6 +68,11 @@ void* p_operator_new2; //just a pointer to the operator new2
 
 const char* BACKTRACE = "backtrace";
 int (*p_backtrace) ( void**, int ); //just a pointer to the backtrace
+
+#ifdef DEBUG_INFO
+const char* BACKTRACE_SYMBOLS = "backtrace_symbols";
+char** (*p_backtrace_symbols) ( void* const*, int ); //just a pointer to the backtrace_symbols
+#endif
 
 /* ===================================================================== */
 /* Global variables                                                      */
@@ -169,18 +180,19 @@ void UpdateLastTimeInMilisec(type_long& out_last_time) {
 /* Replacement routines                                                  */
 /* ===================================================================== */
 
+enum EFunctionId {
+  MALLOC_ID,
+  CALLOC_ID,
+  REALLOC_ID,
+};
+
 const byte mallocTypes[4] = { TCODE_PTR, TCODE_SIZE_T, TCODE_PTR, TCODE_LONG };
 
-struct MallocData {
+struct AllocationInfo {
   type_ptr returned_value;
   type_size_t argument;
   type_ptr backtrace_pointer;
   type_long time;
-};
-
-enum EFunctionId {
-  MALLOC_ID,
-  FREE_ID,
 };
 
 bool IsLibraryAddress(const void* pAddress)
@@ -195,10 +207,10 @@ bool IsThisFunction(const void* pFunction, const void* pAddress)
   return ((uint64_t)pAddress - (uint64_t)pFunction < MAX_FUNCTION_OFFSET);
 }
 
-bool GetBacktracePointer(const EFunctionId eFuncId, type_ptr& bactrace_pointer)
+bool GetBacktracePointer(const EFunctionId eFunctionId, type_ptr& bactrace_pointer)
 {
-  const uint32_t MAXIMAL_BUFFER_SIZE = 6U;
-  uint32_t NEEDED_INDEX = 3U;
+  const uint32_t MAXIMAL_BUFFER_SIZE = 7U;
+  uint32_t NEEDED_INDEX = 4U;
   bool bResult = false;
   if (p_backtrace != NULL) {
     void* buffer[MAXIMAL_BUFFER_SIZE];
@@ -206,12 +218,19 @@ bool GetBacktracePointer(const EFunctionId eFuncId, type_ptr& bactrace_pointer)
     // There is malloc in the backtrace function, it matters to use
     // usual malloc inside otherwise invocation is recursived
     p_backtrace(buffer, MAXIMAL_BUFFER_SIZE);
+#ifdef DEBUG_INFO
+    char** symbols = p_backtrace_symbols(buffer, MAXIMAL_BUFFER_SIZE);
+    for (uint32_t i = 0; i < MAXIMAL_BUFFER_SIZE; i++) {
+      LOG_INFO(symbols[i]);
+    }
+    LOG_INFO((char*)"\r\n");
+#endif
     UnlockThread(mfQueue);
     if (!IsLibraryAddress(buffer[NEEDED_INDEX])) { 
       bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX];
       bResult = true;
     }
-    if (!bResult && eFuncId == MALLOC_ID) {
+    if (!bResult && eFunctionId == MALLOC_ID) {
       if (IsThisFunction(p_operator_new1, buffer[NEEDED_INDEX])) {
         if (!IsLibraryAddress(buffer[NEEDED_INDEX + 1U])) {
           bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX + 1U];
@@ -228,20 +247,18 @@ bool GetBacktracePointer(const EFunctionId eFuncId, type_ptr& bactrace_pointer)
   return bResult;
 }
 
-VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
+void HandleAllocation(const EFunctionId eFunctionId, const VOID * v, const size_t arg0)
 {
-  VOID * v = orgFuncptr( arg0 );
-
-  if (shared_bInsideMain //this malloc is after main function
-    && !IsThreadLocked(mfQueue)) { //use my malloc
+  if (shared_bInsideMain //this malloc or calloc is after main function
+    && !IsThreadLocked(mfQueue)) { //use my malloc or calloc
 
     PIN_MutexLock(&shared_mutex);
 
-    struct MallocData data;
+    struct AllocationInfo data;
     data.returned_value = (type_ptr)v;
     data.argument = (type_size_t)arg0;
     UpdateLastTimeInMilisec(data.time);
-    const bool bValidPointer = GetBacktracePointer(MALLOC_ID, data.backtrace_pointer);
+    const bool bValidPointer = GetBacktracePointer(eFunctionId, data.backtrace_pointer);
 
     if (bValidPointer) {
       shared_memory_map[(void*)data.returned_value] = true;
@@ -257,36 +274,62 @@ VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
     }
     PIN_MutexUnlock(&shared_mutex);
   }
+}
+
+VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
+{
+  VOID * v = orgFuncptr( arg0 );
+  HandleAllocation(MALLOC_ID, v, arg0);
+  return v;
+}
+
+VOID * NewCalloc( TYPE_FP_CALLOC orgFuncptr, size_t arg0, size_t arg1 )
+{
+  VOID * v = orgFuncptr( arg0, arg1 );
+  HandleAllocation(CALLOC_ID, v, arg0 * arg1);
+  return v;
+}
+
+void HandleDeallocation(const void * arg0);
+
+VOID * NewRealloc( TYPE_FP_REALLOC orgFuncptr, void* arg0, size_t arg1 )
+{
+  VOID * v = orgFuncptr( arg0, arg1 );
+  if (arg0 == NULL && arg1 == 0U) {
+    // do nothing
+  }
+  else {
+    if (arg0 != NULL) {
+      HandleDeallocation(arg0);
+    }
+    if (arg1 != 0U) {
+      HandleAllocation(REALLOC_ID, v, arg1);
+    }
+  }
   return v;
 }
 
 const byte freeTypes[3] = { TCODE_PTR, TCODE_PTR, TCODE_LONG };
 
-struct FreeData {
+struct DeallocationInfo {
   type_ptr argument;
   type_ptr reserved;
   type_long time;
 };
 
-VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
+void HandleDeallocation(const void * arg0)
 {
-  orgFuncptr( (size_t)arg0 );
-
   if (shared_bInsideMain && //this free is after main function
     !IsThreadLocked(mfQueue)) { //use my free
 
     PIN_MutexLock(&shared_mutex);
 
-    struct FreeData data;
+    struct DeallocationInfo data;
     data.argument = (type_ptr)arg0;
     data.reserved = (type_ptr)arg0;
     UpdateLastTimeInMilisec(data.time);
-    type_ptr mockup;
-    bool bValidPointer = GetBacktracePointer(FREE_ID, mockup);
+    const bool bValidPointer = (shared_memory_map.erase((void*)data.argument) != 0U);
 
-    if (bValidPointer) {
-      bValidPointer = (shared_memory_map.erase((void*)data.argument) != 0U);
-    }
     if (bValidPointer) {
       Help :: hton((byte*)&data.argument, sizeof(data.argument));
       Help :: hton((byte*)&data.reserved, sizeof(data.reserved));
@@ -298,6 +341,12 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
     }
     PIN_MutexUnlock(&shared_mutex);
   }
+}
+
+VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
+{
+  orgFuncptr( (size_t)arg0 );
+  HandleDeallocation(arg0);
 }
 
 VOID NewLibcStartMain( TYPE_FP_LIBC_START_MAIN orgFuncptr,
@@ -362,6 +411,28 @@ bool HandleFunction(IMG* img, char* funcName) {
           IARG_END);
         PROTO_Free( proto_malloc );
       }
+      else if (strcmp(funcName, CALLOC) == 0) {
+        PROTO proto_calloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+          CALLOC, PIN_PARG(size_t), PIN_PARG(size_t), PIN_PARG_END() );
+        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewCalloc),
+          IARG_PROTOTYPE, proto_calloc,
+          IARG_ORIG_FUNCPTR,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+          IARG_END);
+        PROTO_Free( proto_calloc );
+      }
+      else if (strcmp(funcName, REALLOC) == 0) {
+        PROTO proto_realloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+          REALLOC, PIN_PARG(void*), PIN_PARG(size_t), PIN_PARG_END() );
+        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewRealloc),
+          IARG_PROTOTYPE, proto_realloc,
+          IARG_ORIG_FUNCPTR,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+          IARG_END);
+        PROTO_Free( proto_realloc );
+      }
       else if (strcmp(funcName, FREE) == 0) {
         PROTO proto_free = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
           FREE, PIN_PARG(size_t), PIN_PARG_END() );
@@ -394,6 +465,12 @@ bool HandleFunction(IMG* img, char* funcName) {
         ADDRINT addr = RTN_Address(rtn);
         p_backtrace = (int (*)( void**, int ))addr;
       }
+#ifdef DEBUG_INFO
+      else if (strcmp(funcName, BACKTRACE_SYMBOLS) == 0) {
+        ADDRINT addr = RTN_Address(rtn);
+        p_backtrace_symbols = (char** (*)( void* const*, int ))addr;
+      }
+#endif
     }
     sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
     LOG_INFO(message);
@@ -422,12 +499,20 @@ VOID ImageLoad( IMG img, VOID *v )
     HandleFunction(&img, (char*)__LIBC_START_MAIN);
     // Replace "malloc" with my function
     HandleFunction(&img, (char*)MALLOC);
+    // Replace "calloc" with my function
+    HandleFunction(&img, (char*)CALLOC);
+    // Replace "realloc" with my function
+    HandleFunction(&img, (char*)REALLOC);
     // Replace "free" with my function
     HandleFunction(&img, (char*)FREE);
     // Replace "exit" with my function
     HandleFunction(&img, (char*)EXIT);
     // Replace "backtrace" with my function
     HandleFunction(&img, (char*)BACKTRACE);
+#ifdef DEBUG_INFO
+    // Replace "backtrace" with my function
+    HandleFunction(&img, (char*)BACKTRACE_SYMBOLS);
+#endif
   }
   else
   {
@@ -459,6 +544,8 @@ VOID Ini( int argc, char* argv[] ) {
   shared_transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
   gettimeofday(&shared_start_time, NULL);
   // Init variables
+  p_operator_new1 = NULL;
+  p_operator_new2 = NULL;
   p_backtrace = NULL;
   shared_last_time = 0;
   shared_bInsideMain = false;
