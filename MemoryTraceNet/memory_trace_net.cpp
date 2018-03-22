@@ -60,11 +60,9 @@ typedef VOID * ( *TYPE_FP_REALLOC )( void*, size_t );
 const char* FREE      = "free";
 typedef VOID ( *TYPE_FP_FREE )( size_t );
 
-const char* OPERATOR_NEW1    = "_Znwm";
-void* p_operator_new1; //just a pointer to the operator new1
-
-const char* OPERATOR_NEW2    = "_Znam";
-void* p_operator_new2; //just a pointer to the operator new2
+const char* OPERATOR_NEW1    = "operator new";
+const char* OPERATOR_NEW2    = "operator new[]";
+typedef VOID * ( *TYPE_FP_OPERATOR_NEW )( size_t );
 
 const char* BACKTRACE = "backtrace";
 int (*p_backtrace) ( void**, int ); //just a pointer to the backtrace
@@ -180,12 +178,6 @@ void UpdateLastTimeInMilisec(type_long& out_last_time) {
 /* Replacement routines                                                  */
 /* ===================================================================== */
 
-enum EFunctionId {
-  MALLOC_ID,
-  CALLOC_ID,
-  REALLOC_ID,
-};
-
 const byte mallocTypes[4] = { TCODE_PTR, TCODE_SIZE_T, TCODE_PTR, TCODE_LONG };
 
 struct AllocationInfo {
@@ -207,9 +199,9 @@ bool IsThisFunction(const void* pFunction, const void* pAddress)
   return ((uint64_t)pAddress - (uint64_t)pFunction < MAX_FUNCTION_OFFSET);
 }
 
-bool GetBacktracePointer(const EFunctionId eFunctionId, type_ptr& bactrace_pointer)
+bool GetBacktracePointer(type_ptr& bactrace_pointer)
 {
-  const uint32_t MAXIMAL_BUFFER_SIZE = 7U;
+  const uint32_t MAXIMAL_BUFFER_SIZE = 5U;
   uint32_t NEEDED_INDEX = 4U;
   bool bResult = false;
   if (p_backtrace != NULL) {
@@ -230,24 +222,11 @@ bool GetBacktracePointer(const EFunctionId eFunctionId, type_ptr& bactrace_point
       bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX];
       bResult = true;
     }
-    if (!bResult && eFunctionId == MALLOC_ID) {
-      if (IsThisFunction(p_operator_new1, buffer[NEEDED_INDEX])) {
-        if (!IsLibraryAddress(buffer[NEEDED_INDEX + 1U])) {
-          bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX + 1U];
-          bResult = true;
-        }
-        if (IsThisFunction(p_operator_new2, buffer[NEEDED_INDEX + 1U])
-            && !IsLibraryAddress(buffer[NEEDED_INDEX + 2U])) {
-          bactrace_pointer = (type_ptr)buffer[NEEDED_INDEX + 2U];
-          bResult = true;
-        }
-      }
-    }
   }
   return bResult;
 }
 
-void HandleAllocation(const EFunctionId eFunctionId, const VOID * v, const size_t arg0)
+void HandleAllocation(const VOID * v, const size_t arg0)
 {
   if (shared_bInsideMain //this malloc or calloc is after main function
     && !IsThreadLocked(mfQueue)) { //use my malloc or calloc
@@ -258,7 +237,7 @@ void HandleAllocation(const EFunctionId eFunctionId, const VOID * v, const size_
     data.returned_value = (type_ptr)v;
     data.argument = (type_size_t)arg0;
     UpdateLastTimeInMilisec(data.time);
-    const bool bValidPointer = GetBacktracePointer(eFunctionId, data.backtrace_pointer);
+    const bool bValidPointer = GetBacktracePointer(data.backtrace_pointer);
 
     if (bValidPointer) {
       shared_memory_map[(void*)data.returned_value] = true;
@@ -276,17 +255,33 @@ void HandleAllocation(const EFunctionId eFunctionId, const VOID * v, const size_
   }
 }
 
+VOID * NewOperatorNew( TYPE_FP_OPERATOR_NEW orgFuncptr, size_t arg0 )
+{
+  const bool bLocked = !IsThreadLocked(mfQueue);
+  if (bLocked) {
+    LockThread(mfQueue);
+  }
+  VOID * v = orgFuncptr( arg0 );
+  if (IsThreadLocked(mfQueue)) {
+    UnlockThread(mfQueue);
+  }
+  if (bLocked) {
+    HandleAllocation(v, arg0);
+  }
+  return v;
+}
+
 VOID * NewMalloc( TYPE_FP_MALLOC orgFuncptr, size_t arg0 )
 {
   VOID * v = orgFuncptr( arg0 );
-  HandleAllocation(MALLOC_ID, v, arg0);
+  HandleAllocation(v, arg0);
   return v;
 }
 
 VOID * NewCalloc( TYPE_FP_CALLOC orgFuncptr, size_t arg0, size_t arg1 )
 {
   VOID * v = orgFuncptr( arg0, arg1 );
-  HandleAllocation(CALLOC_ID, v, arg0 * arg1);
+  HandleAllocation(v, arg0 * arg1);
   return v;
 }
 
@@ -303,7 +298,7 @@ VOID * NewRealloc( TYPE_FP_REALLOC orgFuncptr, void* arg0, size_t arg1 )
       HandleDeallocation(arg0);
     }
     if (arg1 != 0U) {
-      HandleAllocation(REALLOC_ID, v, arg1);
+      HandleAllocation(v, arg1);
     }
   }
   return v;
@@ -369,112 +364,138 @@ VOID NewExit( TYPE_FP_EXIT orgFuncptr, ADDRINT arg0) {
 /* Instrumentation routines                                              */
 /* ===================================================================== */
 
+bool HandleOperator(IMG* img, char* operatorName) {
+  bool bResult = true;
+  char* imgName = (char*)IMG_Name(*img).c_str();
+  // Walk through the symbols in the symbol table.
+  //
+  char message[MAX_STR_LEN];
+  for (SYM sym = IMG_RegsymHead(*img); SYM_Valid(sym); sym = SYM_Next(sym))
+  {
+    string undFuncName = PIN_UndecorateSymbolName(SYM_Name(sym), UNDECORATION_NAME_ONLY);
+    ADDRINT funcAddr = IMG_LowAddress(*img) + SYM_Value(sym);
+    RTN rtn = RTN_FindByAddress(funcAddr);
+    bResult = RTN_Valid(rtn) && RTN_IsSafeForProbedInsertion(rtn);
+    if ( bResult ) {
+      sprintf(message, "\nFound \"%s\" (addr. \"%p\") function in \"%s\"",
+          operatorName, (void*)funcAddr, imgName);
+      LOG_INFO(message);
+
+      if (undFuncName == operatorName && (operatorName == OPERATOR_NEW1
+          || operatorName == OPERATOR_NEW2))
+      {
+        PROTO proto_operator_new = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+          operatorName, PIN_PARG(size_t), PIN_PARG_END() );
+        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewOperatorNew),
+          IARG_PROTOTYPE, proto_operator_new,
+          IARG_ORIG_FUNCPTR,
+          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+          IARG_END);
+        PROTO_Free( proto_operator_new );
+      }
+    }
+    sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
+    LOG_INFO(message);
+  }
+  return bResult;
+}
+
 bool HandleFunction(IMG* img, char* funcName) {
   bool bResult = true;
   char* imgName = (char*)IMG_Name(*img).c_str();
   RTN rtn = RTN_FindByName( *img, funcName );
 
-  bResult = RTN_Valid(rtn);
+  bResult = RTN_Valid(rtn) && RTN_IsSafeForProbedInsertion(rtn);
+  char message[MAX_STR_LEN];
   if ( bResult )
   {
     char message[MAX_STR_LEN];
-    sprintf(message, "\nFound \"%s\" function in \"%s\"", funcName, imgName);
+    sprintf(message, "\nFound \"%s\" (addr. \"%p\") function in \"%s\"",
+        funcName, (void*)RTN_Address(rtn), imgName);
     LOG_INFO(message);
 
-    bResult = RTN_Valid(rtn);
-    if (bResult)
-    {
-      if (strcmp(funcName, __LIBC_START_MAIN) == 0) {
-        PROTO proto_libc_start_main = PROTO_Allocate( PIN_PARG(int), CALLINGSTD_DEFAULT,
-          funcName, PIN_PARG(void*), PIN_PARG(int), PIN_PARG(char**),
-          PIN_PARG(int), PIN_PARG(void*), PIN_PARG(void*), PIN_PARG(void*), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewLibcStartMain),
-          IARG_PROTOTYPE, proto_libc_start_main,
-          IARG_ORIG_FUNCPTR,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-          IARG_END);
-        PROTO_Free( proto_libc_start_main );
-      }
-      else if (strcmp(funcName, MALLOC) == 0) {
-        PROTO proto_malloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
-          MALLOC, PIN_PARG(size_t), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewMalloc),
-          IARG_PROTOTYPE, proto_malloc,
-          IARG_ORIG_FUNCPTR,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-          IARG_END);
-        PROTO_Free( proto_malloc );
-      }
-      else if (strcmp(funcName, CALLOC) == 0) {
-        PROTO proto_calloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
-          CALLOC, PIN_PARG(size_t), PIN_PARG(size_t), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewCalloc),
-          IARG_PROTOTYPE, proto_calloc,
-          IARG_ORIG_FUNCPTR,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-          IARG_END);
-        PROTO_Free( proto_calloc );
-      }
-      else if (strcmp(funcName, REALLOC) == 0) {
-        PROTO proto_realloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
-          REALLOC, PIN_PARG(void*), PIN_PARG(size_t), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewRealloc),
-          IARG_PROTOTYPE, proto_realloc,
-          IARG_ORIG_FUNCPTR,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-          IARG_END);
-        PROTO_Free( proto_realloc );
-      }
-      else if (strcmp(funcName, FREE) == 0) {
-        PROTO proto_free = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
-          FREE, PIN_PARG(size_t), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewFree),
-          IARG_PROTOTYPE, proto_free,
-          IARG_ORIG_FUNCPTR,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-          IARG_END);
-        PROTO_Free( proto_free );
-      }
-      else if (strcmp(funcName, EXIT) == 0) {
-        PROTO proto_exit = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
-          EXIT, PIN_PARG(int), PIN_PARG_END() );
-        RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewExit),
-          IARG_PROTOTYPE, proto_exit,
-          IARG_ORIG_FUNCPTR,
-          IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-          IARG_END);
-        PROTO_Free( proto_exit );
-      }
-      else if (strcmp(funcName, OPERATOR_NEW1) == 0) {
-        ADDRINT addr = RTN_Address(rtn);
-        p_operator_new1 = (void*)addr;
-      }
-      else if (strcmp(funcName, OPERATOR_NEW2) == 0) {
-        ADDRINT addr = RTN_Address(rtn);
-        p_operator_new2 = (void*)addr;
-      }
-      else if (strcmp(funcName, BACKTRACE) == 0) {
-        ADDRINT addr = RTN_Address(rtn);
-        p_backtrace = (int (*)( void**, int ))addr;
-      }
-#ifdef DEBUG_INFO
-      else if (strcmp(funcName, BACKTRACE_SYMBOLS) == 0) {
-        ADDRINT addr = RTN_Address(rtn);
-        p_backtrace_symbols = (char** (*)( void* const*, int ))addr;
-      }
-#endif
+    if (strcmp(funcName, __LIBC_START_MAIN) == 0) {
+      PROTO proto_libc_start_main = PROTO_Allocate( PIN_PARG(int), CALLINGSTD_DEFAULT,
+        funcName, PIN_PARG(void*), PIN_PARG(int), PIN_PARG(char**),
+        PIN_PARG(int), PIN_PARG(void*), PIN_PARG(void*), PIN_PARG(void*), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewLibcStartMain),
+        IARG_PROTOTYPE, proto_libc_start_main,
+        IARG_ORIG_FUNCPTR,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+        IARG_END);
+      PROTO_Free( proto_libc_start_main );
     }
-    sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
-    LOG_INFO(message);
+    else if (strcmp(funcName, MALLOC) == 0) {
+      PROTO proto_malloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+        MALLOC, PIN_PARG(size_t), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewMalloc),
+        IARG_PROTOTYPE, proto_malloc,
+        IARG_ORIG_FUNCPTR,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_END);
+      PROTO_Free( proto_malloc );
+    }
+    else if (strcmp(funcName, CALLOC) == 0) {
+      PROTO proto_calloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+        CALLOC, PIN_PARG(size_t), PIN_PARG(size_t), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewCalloc),
+        IARG_PROTOTYPE, proto_calloc,
+        IARG_ORIG_FUNCPTR,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+        IARG_END);
+      PROTO_Free( proto_calloc );
+    }
+    else if (strcmp(funcName, REALLOC) == 0) {
+      PROTO proto_realloc = PROTO_Allocate( PIN_PARG(void *), CALLINGSTD_DEFAULT,
+        REALLOC, PIN_PARG(void*), PIN_PARG(size_t), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewRealloc),
+        IARG_PROTOTYPE, proto_realloc,
+          IARG_ORIG_FUNCPTR,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+        IARG_END);
+      PROTO_Free( proto_realloc );
+    }
+    else if (strcmp(funcName, FREE) == 0) {
+      PROTO proto_free = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
+        FREE, PIN_PARG(size_t), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewFree),
+        IARG_PROTOTYPE, proto_free,
+        IARG_ORIG_FUNCPTR,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_END);
+      PROTO_Free( proto_free );
+    }
+    else if (strcmp(funcName, EXIT) == 0) {
+      PROTO proto_exit = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
+        EXIT, PIN_PARG(int), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewExit),
+        IARG_PROTOTYPE, proto_exit,
+        IARG_ORIG_FUNCPTR,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_END);
+      PROTO_Free( proto_exit );
+    }
+    else if (strcmp(funcName, BACKTRACE) == 0) {
+      ADDRINT addr = RTN_Address(rtn);
+      p_backtrace = (int (*)( void**, int ))addr;
+    }
+#ifdef DEBUG_INFO
+    else if (strcmp(funcName, BACKTRACE_SYMBOLS) == 0) {
+      ADDRINT addr = RTN_Address(rtn);
+      p_backtrace_symbols = (char** (*)( void* const*, int ))addr;
+    }
+#endif
   }
+  sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
+  LOG_INFO(message);
   return bResult;
 }
 
@@ -486,31 +507,21 @@ VOID ImageLoad( IMG img, VOID *v )
   const bool bStdc = ( string(imgName).find((char*)"libstdc++.so") < MAX_STR_LEN );
   if (bStdc)
   {
-    // Replace "operator new" with my function
-    HandleFunction(&img, (char*)OPERATOR_NEW1);
-    // Replace "operator new" with my function
-    HandleFunction(&img, (char*)OPERATOR_NEW2);
+    HandleOperator(&img, (char*)OPERATOR_NEW1);
+    HandleOperator(&img, (char*)OPERATOR_NEW2);
   }
   // Looking for the libc
   const bool bLibc = ( string(imgName).find(LIBC_SO) < MAX_STR_LEN );
   if (bLibc)
   {
-    // Replace "__libc_start_main" with my function
     HandleFunction(&img, (char*)__LIBC_START_MAIN);
-    // Replace "malloc" with my function
     HandleFunction(&img, (char*)MALLOC);
-    // Replace "calloc" with my function
     HandleFunction(&img, (char*)CALLOC);
-    // Replace "realloc" with my function
     HandleFunction(&img, (char*)REALLOC);
-    // Replace "free" with my function
     HandleFunction(&img, (char*)FREE);
-    // Replace "exit" with my function
     HandleFunction(&img, (char*)EXIT);
-    // Replace "backtrace" with my function
     HandleFunction(&img, (char*)BACKTRACE);
 #ifdef DEBUG_INFO
-    // Replace "backtrace" with my function
     HandleFunction(&img, (char*)BACKTRACE_SYMBOLS);
 #endif
   }
@@ -544,8 +555,6 @@ VOID Ini( int argc, char* argv[] ) {
   shared_transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
   gettimeofday(&shared_start_time, NULL);
   // Init variables
-  p_operator_new1 = NULL;
-  p_operator_new2 = NULL;
   p_backtrace = NULL;
   shared_last_time = 0;
   shared_bInsideMain = false;
