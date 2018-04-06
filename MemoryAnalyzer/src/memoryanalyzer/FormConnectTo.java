@@ -330,9 +330,6 @@ public class FormConnectTo extends javax.swing.JFrame {
         connect_struct.port = port;
         connect_struct.programArguments = jTextFieldArgumentsProgram.getText(
                 ).replaceAll(Protocol.COM_DELIMITER, "").replaceAll(Protocol.ARGS_DELIMITER, "");
-        if(connect_struct.programArguments.equals("")) {
-            connect_struct.programArguments = "null";
-        }
         connect_struct.remotePath = jTextFieldRemotePath.getText(
                 ).replaceAll(Protocol.COM_DELIMITER, "").replaceAll(Protocol.ARGS_DELIMITER, "");
 

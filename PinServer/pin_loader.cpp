@@ -121,42 +121,50 @@ bool PinLoader :: pinExec(char* ip) {
         // 64 is limit of arguments
         char** args = new char*[64];
         args[0] = new char[strlen("") + 1];
-        strcpy(args[0], "");
-        
+        sprintf(args[0], "");
+
         args[1] = new char[strlen("-t") + 1];
-        strcpy(args[1], "-t");
-        
+        sprintf(args[1], "-t");
+
         args[2] = new char[strlen(PIN_TOOL_PATH) + 1];
         strcpy(args[2], PIN_TOOL_PATH);
         
         args[3] = new char[strlen("-o") + 1];
-        strcpy(args[3], "-o");
+        sprintf(args[3], "-o");
         
         args[4] = new char[256];
         setTmpFilePath(args[4], unique_key_of_file);
-       
-        args[5] = new char[strlen("--") + 1];
-        strcpy(args[5], "--");
+
+        args[5] = new char[32];
+        sprintf(args[5], "ip=%s", ip);
+
+        args[6] = new char[32];
+        sprintf(args[6], "port=%d", portToConnect);
+
+        args[7] = new char[strlen("--") + 1];
+        sprintf(args[7], "--");
         
-        args[6] = new char[256];
-        strcpy(args[6], pathToApp);
+        args[8] = new char[256];
+        strcpy(args[8], pathToApp);
         
-        int count = -1;
+        unsigned int num_parsing_arg = 0U;
+        unsigned int num_args = 9U;
         bool parse_result = true;
-        do {
-            count += 1;
-            args[7 + count] = new char[256];
+        while (parse_result) {
+            args[num_args] = new char[256];
+            memset(args[num_args], 0x00, 256);
             parse_result = parse_get_argument(
-                    argsForApp, args[7 + count], count, ' ');
-        } while(parse_result);      
-                        
-        // For this string memory allocated before (in loop)
-        sprintf(args[7 + count], "ip=%s", ip);
-        
-        args[8 + count] = new char[32];
-        sprintf(args[8 + count], "port=%d", portToConnect);
-        
-        args[9 + count] = NULL;
+                    argsForApp, args[num_args], num_parsing_arg, ' ');
+            if (strlen(args[num_args]) < 1) {
+                parse_result = false;
+            }
+            num_parsing_arg++;
+            num_args++;
+        }      
+        num_args -= 1U;
+
+        delete[] args[num_args];
+        args[num_args] = NULL;
         
         execvp("pin", (char* const*)args);
         exit(ERR_EXIT_CODE);

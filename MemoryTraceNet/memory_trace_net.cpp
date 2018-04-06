@@ -98,33 +98,36 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 /* Functions regarding to parsing input arguments                        */
 /* ===================================================================== */
 
-int ParseToIP(int argc, char* argv[]) {
+int ParseToIP(int argc, char* argv[], int& ip) {
+  int argNum;
   char s_ip[] = "ip=";
   char* p;
   in_addr tmp;
   tmp.s_addr = -1;
-  for (int i = 0; i < argc; i++) {
-    p = strstr(argv[i], s_ip);
+  for (argNum = 0; argNum < argc; argNum++) {
+    p = strstr(argv[argNum], s_ip);
     if (p != NULL) {
       inet_pton(AF_INET, p + strlen(s_ip), &tmp);
       break;
     }
   }
-  return tmp.s_addr;
+  ip = tmp.s_addr;
+  return argNum;
 }
 
-int ParseToPort(int argc, char* argv[]) {
-  int port = -1;
+int ParseToPort(int argc, char* argv[], int& port) {
+  int argNum;
   char s_port[] = "port=";
   char* p;
-  for (int i = 0; i < argc; i++) {
-    p = strstr(argv[i], s_port);
+  port = -1;
+  for (argNum = 0; argNum < argc; argNum++) {
+    p = strstr(argv[argNum], s_port);
     if (p != NULL) {
       port = atoi(p + strlen(s_port));
       break;
     }
   }
-  return port;
+  return argNum;
 }
 
 /* ===================================================================== */
@@ -545,14 +548,14 @@ INT32 Help( VOID )
   return -1;
 }
 
-VOID Ini( int argc, char* argv[] ) {
+VOID Ini(int i32Ip, int i32Port) {
   LOG_INFO((char*)"\n*** MEMORY TRACE ***\n");
   // Init mutexes
   PIN_MutexInit(&threadLockMutex);
   PIN_MutexInit(&shared_mutex);
   // Init a binary journal
   shared_bin_journal = new BinJournal(KnobOutputFile.Value().c_str());
-  shared_transmitter = new Net(ParseToIP(argc, argv), ParseToPort(argc, argv));
+  shared_transmitter = new Net(i32Ip, i32Port);
   gettimeofday(&shared_start_time, NULL);
   // Init variables
   p_backtrace = NULL;
@@ -584,14 +587,56 @@ VOID Fini( VOID ) {
   PIN_MutexFini(&shared_mutex);
 }
 
+CHAR** AllocateNewArgsMem(INT32 argc_new)
+{
+  const int MAX_STR_LEN_ARGS = 128;
+
+  const size_t ARR_POINTERS_SIZE = argc_new * sizeof(void*);
+  const size_t ARR_STRINGS_SIZE = argc_new * MAX_STR_LEN_ARGS;
+  CHAR** argv_new = (char**)new char[ARR_POINTERS_SIZE + ARR_STRINGS_SIZE];
+  char* base = ARR_POINTERS_SIZE + (char*)argv_new;
+  for (int i = 0; i < argc_new; i++) {
+    argv_new[i] = base + i * MAX_STR_LEN_ARGS;
+  }
+  return argv_new;
+}
+
+void InitNewArgs(INT32 argc, CHAR *argv[], INT32& argc_new, CHAR *argv_new[])
+{
+  int stub;
+  const int numIpArg = ParseToIP(argc, argv, stub);
+  const int numPortArg = ParseToPort(argc, argv, stub);
+
+  int realNumArg = 0;
+  const int max_args = argc_new;
+  for (int i = 0; i < max_args; i++) {
+    if (i == numIpArg || i == numPortArg) {
+      argc_new--;
+    }
+    else {
+      strcpy(argv_new[realNumArg], argv[i]);
+      realNumArg++;
+    }
+  }
+}
+
 int main( INT32 argc, CHAR *argv[] )
 {
+  INT32 argc_new = min(32, argc);
+  CHAR** argv_new = AllocateNewArgsMem(argc_new);
+  InitNewArgs(argc, argv, argc_new, argv_new);
+
   PIN_InitSymbols();
-  if (PIN_Init(argc, argv))
+  if (PIN_Init(argc_new, argv_new))
     { return Help(); }
 
   IMG_AddInstrumentFunction( ImageLoad, 0 );
-  Ini(argc, argv);
+
+  int i32Ip, i32Port;
+  ParseToIP(argc, argv, i32Ip);
+  ParseToPort(argc, argv, i32Port);
+  Ini(i32Ip, i32Port);
+
   PIN_StartProgramProbed();
 
   return 0;
