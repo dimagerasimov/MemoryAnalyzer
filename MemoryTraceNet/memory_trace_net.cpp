@@ -45,9 +45,6 @@ const char* __LIBC_START_MAIN = "__libc_start_main";
 typedef int ( *TYPE_FP_LIBC_START_MAIN)( int (*main) (int, char **, char **), int argc, char **argv,
         __typeof (main) init, void (*fini) (void), void (*rtld_fini) (void), void *stack_end );
 
-const char* EXIT      = "exit";
-typedef VOID ( *TYPE_FP_EXIT )( int );
-
 const char* MALLOC    = "malloc";
 typedef VOID * ( *TYPE_FP_MALLOC )( size_t );
 
@@ -64,8 +61,11 @@ const char* OPERATOR_NEW1    = "operator new";
 const char* OPERATOR_NEW2    = "operator new[]";
 typedef VOID * ( *TYPE_FP_OPERATOR_NEW )( size_t );
 
+const char* FINALIZE         = "__cxa_finalize";
+typedef VOID ( *TYPE_FP_FINALIZE )( void* );
+
 const char* BACKTRACE = "backtrace";
-int (*p_backtrace) ( void**, int ); //just a pointer to the backtrace
+int (*p_backtrace) ( void**, int ) = NULL; //just a pointer to the backtrace
 
 #ifdef DEBUG_INFO
 const char* BACKTRACE_SYMBOLS = "backtrace_symbols";
@@ -82,7 +82,7 @@ PIN_MUTEX threadLockMutex;
 map<OS_THREAD_ID, bool> mfQueue;
 
 // Shared data
-bool shared_bInsideMain;
+bool shared_bInsideMain = false;
 
 PIN_MUTEX shared_mutex;
 type_long shared_last_time;
@@ -196,12 +196,6 @@ bool IsLibraryAddress(const void* pAddress)
   return ((uint64_t)pAddress > THRESHOLD);
 }
 
-bool IsThisFunction(const void* pFunction, const void* pAddress)
-{
-  const uint64_t MAX_FUNCTION_OFFSET = 0x2F;
-  return ((uint64_t)pAddress - (uint64_t)pFunction < MAX_FUNCTION_OFFSET);
-}
-
 bool GetBacktracePointer(type_ptr& bactrace_pointer)
 {
   const uint32_t MAXIMAL_BUFFER_SIZE = 5U;
@@ -260,15 +254,13 @@ void HandleAllocation(const VOID * v, const size_t arg0)
 
 VOID * NewOperatorNew( TYPE_FP_OPERATOR_NEW orgFuncptr, size_t arg0 )
 {
-  const bool bLocked = !IsThreadLocked(mfQueue);
-  if (bLocked) {
+  const bool bHandle = !IsThreadLocked(mfQueue);
+  if (bHandle) {
     LockThread(mfQueue);
   }
   VOID * v = orgFuncptr( arg0 );
-  if (IsThreadLocked(mfQueue)) {
+  if (bHandle) {
     UnlockThread(mfQueue);
-  }
-  if (bLocked) {
     HandleAllocation(v, arg0);
   }
   return v;
@@ -293,16 +285,11 @@ void HandleDeallocation(const void * arg0);
 VOID * NewRealloc( TYPE_FP_REALLOC orgFuncptr, void* arg0, size_t arg1 )
 {
   VOID * v = orgFuncptr( arg0, arg1 );
-  if (arg0 == NULL && arg1 == 0U) {
-    // do nothing
+  if (arg0 != NULL) {
+    HandleDeallocation(arg0);
   }
-  else {
-    if (arg0 != NULL) {
-      HandleDeallocation(arg0);
-    }
-    if (arg1 != 0U) {
-      HandleAllocation(v, arg1);
-    }
+  if (arg1 != 0U) {
+    HandleAllocation(v, arg1);
   }
   return v;
 }
@@ -317,8 +304,8 @@ struct DeallocationInfo {
 
 void HandleDeallocation(const void * arg0)
 {
-  if (shared_bInsideMain && //this free is after main function
-    !IsThreadLocked(mfQueue)) { //use my free
+  if (!IsThreadLocked(mfQueue))
+  { //use my free
 
     PIN_MutexLock(&shared_mutex);
 
@@ -347,43 +334,40 @@ VOID NewFree( TYPE_FP_FREE orgFuncptr, VOID* arg0 )
   HandleDeallocation(arg0);
 }
 
+// Fini declaration
+VOID Fini( VOID );
+
+void NewFinalize( TYPE_FP_FINALIZE orgFuncptr, void* d) {
+  orgFuncptr(d);
+  Fini();
+}
+
 VOID NewLibcStartMain( TYPE_FP_LIBC_START_MAIN orgFuncptr,
   int (*main) (int, char **, char **), int argc, char **argv,
         __typeof (main) init, void (*fini) (void), void (*rtld_fini) (void), void *stack_end ) {
   shared_bInsideMain = true;
   orgFuncptr( main, argc, argv, init, fini, rtld_fini, stack_end);
-}
-
-// Fini declaration
-VOID Fini( VOID );
-
-VOID NewExit( TYPE_FP_EXIT orgFuncptr, ADDRINT arg0) {
   shared_bInsideMain = false;
-  Fini();
-  orgFuncptr( arg0 );
 }
 
 /* ===================================================================== */
 /* Instrumentation routines                                              */
 /* ===================================================================== */
 
-bool HandleOperator(IMG* img, char* operatorName) {
-  bool bResult = true;
-  char* imgName = (char*)IMG_Name(*img).c_str();
+void HandleOperator(IMG* img, char* operatorName) {
   // Walk through the symbols in the symbol table.
   //
-  char message[MAX_STR_LEN];
   for (SYM sym = IMG_RegsymHead(*img); SYM_Valid(sym); sym = SYM_Next(sym))
   {
     string undFuncName = PIN_UndecorateSymbolName(SYM_Name(sym), UNDECORATION_NAME_ONLY);
     ADDRINT funcAddr = IMG_LowAddress(*img) + SYM_Value(sym);
     RTN rtn = RTN_FindByAddress(funcAddr);
-    bResult = RTN_Valid(rtn) && RTN_IsSafeForProbedInsertion(rtn);
+    const bool bResult = RTN_Valid(rtn) && RTN_IsSafeForProbedInsertion(rtn);
+#ifdef DEBUG_INFO
+    char* imgName = (char*)IMG_Name(*img).c_str();
+    bool bPrintInfo = bResult;
+#endif
     if ( bResult ) {
-      sprintf(message, "\nFound \"%s\" (addr. \"%p\") function in \"%s\"",
-          operatorName, (void*)funcAddr, imgName);
-      LOG_INFO(message);
-
       if (undFuncName == operatorName && (operatorName == OPERATOR_NEW1
           || operatorName == OPERATOR_NEW2))
       {
@@ -396,27 +380,33 @@ bool HandleOperator(IMG* img, char* operatorName) {
           IARG_END);
         PROTO_Free( proto_operator_new );
       }
+#ifdef DEBUG_INFO
+      else {
+        bPrintInfo = false;
+      }
+#endif
     }
-    sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
-    LOG_INFO(message);
+#ifdef DEBUG_INFO
+    if (bPrintInfo) {
+      char message[MAX_STR_LEN];
+      sprintf(message, "\nReplaced \"%s\" (addr. \"%p\") function in \"%s\"",
+          undFuncName.c_str(), (void*)funcAddr, imgName);
+      LOG_INFO(message);
+    }
+#endif
   }
-  return bResult;
 }
 
-bool HandleFunction(IMG* img, char* funcName) {
-  bool bResult = true;
-  char* imgName = (char*)IMG_Name(*img).c_str();
+void HandleFunction(IMG* img, char* funcName) {
   RTN rtn = RTN_FindByName( *img, funcName );
 
-  bResult = RTN_Valid(rtn) && RTN_IsSafeForProbedInsertion(rtn);
-  char message[MAX_STR_LEN];
-  if ( bResult )
+  const bool bResult = RTN_Valid(rtn) && RTN_IsSafeForProbedInsertion(rtn);
+#ifdef DEBUG_INFO
+  char* imgName = (char*)IMG_Name(*img).c_str();
+  bool bPrintInfo = bResult;
+#endif
+  if (bResult)
   {
-    char message[MAX_STR_LEN];
-    sprintf(message, "\nFound \"%s\" (addr. \"%p\") function in \"%s\"",
-        funcName, (void*)RTN_Address(rtn), imgName);
-    LOG_INFO(message);
-
     if (strcmp(funcName, __LIBC_START_MAIN) == 0) {
       PROTO proto_libc_start_main = PROTO_Allocate( PIN_PARG(int), CALLINGSTD_DEFAULT,
         funcName, PIN_PARG(void*), PIN_PARG(int), PIN_PARG(char**),
@@ -476,15 +466,15 @@ bool HandleFunction(IMG* img, char* funcName) {
         IARG_END);
       PROTO_Free( proto_free );
     }
-    else if (strcmp(funcName, EXIT) == 0) {
-      PROTO proto_exit = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
-        EXIT, PIN_PARG(int), PIN_PARG_END() );
-      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewExit),
-        IARG_PROTOTYPE, proto_exit,
+    else if (strcmp(funcName, FINALIZE) == 0) {
+      PROTO proto_finalize = PROTO_Allocate( PIN_PARG(void), CALLINGSTD_DEFAULT,
+        FINALIZE, PIN_PARG(void*), PIN_PARG_END() );
+      RTN_ReplaceSignatureProbed(rtn, AFUNPTR(NewFinalize),
+        IARG_PROTOTYPE, proto_finalize,
         IARG_ORIG_FUNCPTR,
         IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
         IARG_END);
-      PROTO_Free( proto_exit );
+      PROTO_Free( proto_finalize );
     }
     else if (strcmp(funcName, BACKTRACE) == 0) {
       ADDRINT addr = RTN_Address(rtn);
@@ -495,45 +485,35 @@ bool HandleFunction(IMG* img, char* funcName) {
       ADDRINT addr = RTN_Address(rtn);
       p_backtrace_symbols = (char** (*)( void* const*, int ))addr;
     }
+    else {
+      bPrintInfo = false;
+    }
 #endif
   }
-  sprintf(message, "\tReplaced? %s\n", bResult == true ? "YES" : "NO");
-  LOG_INFO(message);
-  return bResult;
+#ifdef DEBUG_INFO
+  if (bPrintInfo) {
+    char message[MAX_STR_LEN];
+    sprintf(message, "\nReplaced \"%s\" (addr. \"%p\") function in \"%s\"",
+        funcName, (void*)RTN_Address(rtn), imgName);
+    LOG_INFO(message);
+  }
+#endif
 }
 
 VOID ImageLoad( IMG img, VOID *v )
 {
-  char* imgName = (char*)IMG_Name(img).c_str();
-
-  // Looking for the stdc
-  const bool bStdc = ( string(imgName).find((char*)"libstdc++.so") < MAX_STR_LEN );
-  if (bStdc)
-  {
-    HandleOperator(&img, (char*)OPERATOR_NEW1);
-    HandleOperator(&img, (char*)OPERATOR_NEW2);
-  }
-  // Looking for the libc
-  const bool bLibc = ( string(imgName).find(LIBC_SO) < MAX_STR_LEN );
-  if (bLibc)
-  {
-    HandleFunction(&img, (char*)__LIBC_START_MAIN);
-    HandleFunction(&img, (char*)MALLOC);
-    HandleFunction(&img, (char*)CALLOC);
-    HandleFunction(&img, (char*)REALLOC);
-    HandleFunction(&img, (char*)FREE);
-    HandleFunction(&img, (char*)EXIT);
-    HandleFunction(&img, (char*)BACKTRACE);
+  HandleOperator(&img, (char*)OPERATOR_NEW1);
+  HandleOperator(&img, (char*)OPERATOR_NEW2);
+  HandleFunction(&img, (char*)__LIBC_START_MAIN);
+  HandleFunction(&img, (char*)MALLOC);
+  HandleFunction(&img, (char*)CALLOC);
+  HandleFunction(&img, (char*)REALLOC);
+  HandleFunction(&img, (char*)FREE);
+  HandleFunction(&img, (char*)BACKTRACE);
+  HandleFunction(&img, (char*)FINALIZE);
 #ifdef DEBUG_INFO
-    HandleFunction(&img, (char*)BACKTRACE_SYMBOLS);
+  HandleFunction(&img, (char*)BACKTRACE_SYMBOLS);
 #endif
-  }
-  else
-  {
-    char message[MAX_STR_LEN];
-    sprintf(message, "<--- \"%s\" ignored... --->", imgName);
-    LOG_INFO(message);
-  }
 }
 
 /* ===================================================================== */
@@ -558,9 +538,7 @@ VOID Ini(int i32Ip, int i32Port) {
   shared_transmitter = new Net(i32Ip, i32Port);
   gettimeofday(&shared_start_time, NULL);
   // Init variables
-  p_backtrace = NULL;
   shared_last_time = 0;
-  shared_bInsideMain = false;
 }
 
 VOID Fini( VOID ) {
